@@ -1,6 +1,5 @@
 import type { CraftHandoffPackage } from '../types/officeKit';
 import { Capacitor } from '@capacitor/core';
-import { v4 as uuidv4 } from 'uuid'; // Fallback logic for unique IDs if needed
 
 type HandoffCallback = (pkg: CraftHandoffPackage) => void;
 
@@ -79,12 +78,12 @@ export class LocalOfficeKitProvider implements OfficeKitProvider {
     };
   }
 
-  async sendHandoff(pkg: CraftHandoffPackage): Promise<boolean> {
+  async sendHandoff(_pkg: CraftHandoffPackage): Promise<boolean> {
     console.warn("LocalOfficeKitProvider.sendHandoff requires physical hardware integration.");
     return false;
   }
 
-  onHandoffReceived(callback: HandoffCallback): () => void {
+  onHandoffReceived(_callback: HandoffCallback): () => void {
     console.warn("LocalOfficeKitProvider.onHandoffReceived requires physical hardware integration.");
     return () => {};
   }

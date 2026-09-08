@@ -21,7 +21,6 @@ export const CraftCopilot: React.FC<CraftCopilotProps> = ({ onApplySpecification
   const [specification, setSpecification] = useState<CraftSpecification | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isDebugScreenOpen, setIsDebugScreenOpen] = useState(false);
   const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
 
   const handleUnderstandRequest = async () => {

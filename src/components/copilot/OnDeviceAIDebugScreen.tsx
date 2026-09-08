@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Cpu, X, Server, ShieldCheck, Smartphone, CheckCircle2 } from 'lucide-react';
+import { Cpu, X, Server, ShieldCheck, Smartphone } from 'lucide-react';
 import { KaaragirAINative } from '../../services/nativeAIApi';
 import type { DeviceCapabilities } from '../../services/nativeAIApi';
 import { Capacitor } from '@capacitor/core';

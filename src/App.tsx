@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import type { AppMode, LocationPin, Artisan, Product, ProductItem } from './types';
 import { NASHIK_LOCALITIES, MOCK_ARTISANS } from './data/mockData';
-import { Navbar } from './components/Navbar';
-import { BuyerDiscovery } from './components/BuyerDiscovery';
 import { FindLocalArtisansPage } from './components/FindLocalArtisansPage';
 import { CustomRequestBuilder } from './components/CustomRequestBuilder';
 import { ArtisanStorefront } from './components/ArtisanStorefront';
@@ -16,7 +14,6 @@ import { KaragirStoreProvider } from './context/KaragirStoreContext';
 import { KaragirAuthModal } from './components/KaragirAuthModal';
 import { CreateStoreWizard } from './components/CreateStoreWizard';
 import { EscrowProvider } from './context/EscrowContext';
-import { Hammer, ShieldCheck, Heart, MapPin } from 'lucide-react';
 
 import { MobileAppShell } from './components/mobile/MobileAppShell';
 import { MobileHome } from './components/mobile/MobileHome';

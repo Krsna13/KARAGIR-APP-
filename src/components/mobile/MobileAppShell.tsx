@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Smartphone, Monitor, RotateCw } from 'lucide-react';
+import { Smartphone, Monitor } from 'lucide-react';
 import { MobileStatusBar } from './MobileStatusBar';
 import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav } from './MobileBottomNav';

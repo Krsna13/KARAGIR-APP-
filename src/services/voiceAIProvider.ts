@@ -6,16 +6,16 @@ export interface VoiceAIProvider {
 }
 
 export class MockVoiceAIProvider implements VoiceAIProvider {
-  async transcribeAudio(audioUri: string): Promise<string> {
+  async transcribeAudio(_audioUri: string): Promise<string> {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     return "Mujhe chhe feet ka dining table chahiye, sagwan teak wood ka, chhe logon ke liye, carved legs aur brass inlay ke saath.";
   }
 }
 
 export class LocalWhisperVoiceAIProvider implements VoiceAIProvider {
-  async transcribeAudio(audioUri: string): Promise<string> {
+  async transcribeAudio(_audioUri: string): Promise<string> {
     try {
-      const response = await KaaragirAINative.transcribeAudio({ audioUri });
+      const response = await KaaragirAINative.transcribeAudio({ audioUri: _audioUri });
       if (response.success) {
         return response.transcript;
       }
