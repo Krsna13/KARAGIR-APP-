@@ -1,4 +1,4 @@
-import { CraftSpecification } from '../types/copilot';
+import type { CraftSpecification } from '../types/copilot';
 import { PRIMARY_MATERIALS, SECONDARY_ACCENTS } from '../data/karagirPricingMockData';
 
 export interface CampaignLauncherStateUpdate {

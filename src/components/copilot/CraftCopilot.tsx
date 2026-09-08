@@ -4,7 +4,8 @@ import { LocalAIStatus } from './LocalAIStatus';
 import { VoiceInput } from './VoiceInput';
 import { ReferenceImageInput } from './ReferenceImageInput';
 import { getCraftAIProvider } from '../../services/craftAIProvider';
-import { validateCraftSpecification, ValidationResult } from '../../services/craftSpecificationValidator';
+import { getOfficeKitProvider } from '../../services/officeKitProvider';
+import { validateCraftSpecification, type ValidationResult } from '../../services/craftSpecificationValidator';
 import type { CraftSpecification, MultimodalCraftRequest } from '../../types/copilot';
 
 interface CraftCopilotProps {
@@ -20,6 +21,8 @@ export const CraftCopilot: React.FC<CraftCopilotProps> = ({ onApplySpecification
   const [specification, setSpecification] = useState<CraftSpecification | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDebugScreenOpen, setIsDebugScreenOpen] = useState(false);
+  const [handoffStatus, setHandoffStatus] = useState<string | null>(null);
 
   const handleUnderstandRequest = async () => {
     if (!textInput && !voiceTranscript && !referenceImage) {
@@ -60,6 +63,42 @@ export const CraftCopilot: React.FC<CraftCopilotProps> = ({ onApplySpecification
     }
   };
 
+  const handleSendToLaptop = async () => {
+    if (specification) {
+      const currentValidation = validateCraftSpecification(specification);
+      setValidation(currentValidation);
+      if (currentValidation.isValid) {
+        setHandoffStatus("Sending...");
+        const provider = getOfficeKitProvider();
+        
+        if (!provider.isAvailable()) {
+          setHandoffStatus("Office Kit unavailable on this device.");
+          return;
+        }
+
+        const pkg = provider.createHandoff({
+          source: "mobile_copilot",
+          customerId: "customer-123", // In a real app, this comes from auth context
+          craftSpecification: specification,
+          referenceImage: {
+            available: !!referenceImage,
+            localUri: referenceImage
+          },
+          voiceTranscript: voiceTranscript,
+          artisanBrief: null,
+          estimatedPrice: null
+        });
+
+        const success = await provider.sendHandoff(pkg);
+        if (success) {
+          setHandoffStatus("Sent! Open your laptop.");
+        } else {
+          setHandoffStatus("Failed to send.");
+        }
+      }
+    }
+  };
+
   const updateSpec = (field: keyof CraftSpecification, value: any) => {
     if (specification) {
       setSpecification({ ...specification, [field]: value });
@@ -80,7 +119,7 @@ export const CraftCopilot: React.FC<CraftCopilotProps> = ({ onApplySpecification
       {/* Input Area */}
       {!specification && !isProcessing && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4">
              <VoiceInput onTranscriptChange={setVoiceTranscript} />
              <ReferenceImageInput onImageChange={setReferenceImage} />
           </div>
@@ -141,7 +180,7 @@ export const CraftCopilot: React.FC<CraftCopilotProps> = ({ onApplySpecification
 
              {isEditing ? (
                 <div className="space-y-3 text-xs">
-                   <div className="grid grid-cols-2 gap-3">
+                   <div className="flex flex-col gap-3">
                      <div>
                        <label className="text-slate-400 block mb-1">Product</label>
                        <input type="text" value={specification.product || ''} onChange={e => updateSpec('product', e.target.value)} className="w-full bg-[#120B08] border border-[#3E2E24] p-2 rounded text-white" />
@@ -158,16 +197,38 @@ export const CraftCopilot: React.FC<CraftCopilotProps> = ({ onApplySpecification
                        <label className="text-slate-400 block mb-1">Width (ft)</label>
                        <input type="number" value={specification.width_ft || ''} onChange={e => updateSpec('width_ft', parseFloat(e.target.value) || null)} className="w-full bg-[#120B08] border border-[#3E2E24] p-2 rounded text-white" />
                      </div>
+                     <div>
+                       <label className="text-slate-400 block mb-1">Height (ft)</label>
+                       <input type="number" value={specification.height_ft || ''} onChange={e => updateSpec('height_ft', parseFloat(e.target.value) || null)} className="w-full bg-[#120B08] border border-[#3E2E24] p-2 rounded text-white" />
+                     </div>
+                     <div>
+                       <label className="text-slate-400 block mb-1">Seating</label>
+                       <input type="number" value={specification.seating_capacity || ''} onChange={e => updateSpec('seating_capacity', parseInt(e.target.value, 10) || null)} className="w-full bg-[#120B08] border border-[#3E2E24] p-2 rounded text-white" />
+                     </div>
+                     <div>
+                       <label className="text-slate-400 block mb-1">Style</label>
+                       <input type="text" value={specification.style || ''} onChange={e => updateSpec('style', e.target.value)} className="w-full bg-[#120B08] border border-[#3E2E24] p-2 rounded text-white" />
+                     </div>
+                     <div>
+                       <label className="text-slate-400 block mb-1">Finish</label>
+                       <input type="text" value={specification.finish || ''} onChange={e => updateSpec('finish', e.target.value)} className="w-full bg-[#120B08] border border-[#3E2E24] p-2 rounded text-white" />
+                     </div>
+                     <div className="col-span-2">
+                       <label className="text-slate-400 block mb-1">Features (comma separated)</label>
+                       <input type="text" value={specification.features.join(', ')} onChange={e => updateSpec('features', e.target.value.split(',').map(s => s.trim()).filter(Boolean))} className="w-full bg-[#120B08] border border-[#3E2E24] p-2 rounded text-white" />
+                     </div>
                    </div>
                 </div>
              ) : (
-                <div className="grid grid-cols-2 gap-y-3 text-xs">
+                <div className="flex flex-col gap-y-3 text-xs">
                    <div><span className="text-slate-500 block">Product</span><span className="text-white font-bold">{specification.product || <span className="text-slate-600 italic">Not specified</span>}</span></div>
                    <div><span className="text-slate-500 block">Material</span><span className="text-[#EAB308] font-bold">{specification.material || <span className="text-slate-600 italic">Not specified</span>}</span></div>
                    <div><span className="text-slate-500 block">Dimensions</span><span className="text-white font-mono">
                      {specification.length_ft || '?'} × {specification.width_ft || '?'} × {specification.height_ft || '?'} ft
                    </span></div>
                    <div><span className="text-slate-500 block">Seating</span><span className="text-white">{specification.seating_capacity || <span className="text-slate-600 italic">Not specified</span>}</span></div>
+                   <div><span className="text-slate-500 block">Style</span><span className="text-white">{specification.style || <span className="text-slate-600 italic">Not specified</span>}</span></div>
+                   <div><span className="text-slate-500 block">Finish</span><span className="text-white">{specification.finish || <span className="text-slate-600 italic">Not specified</span>}</span></div>
                    <div className="col-span-2"><span className="text-slate-500 block">Features</span><span className="text-white">{specification.features.join(', ') || <span className="text-slate-600 italic">None specified</span>}</span></div>
                 </div>
              )}
@@ -181,7 +242,7 @@ export const CraftCopilot: React.FC<CraftCopilotProps> = ({ onApplySpecification
              )}
           </div>
 
-          <div className="flex space-x-3">
+           <div className="flex space-x-3">
              <button
                onClick={() => setIsEditing(!isEditing)}
                className="flex-1 py-2.5 rounded-xl border border-[#2A1E17] bg-[#1A120E] text-slate-300 text-xs font-bold flex items-center justify-center hover:bg-[#261B15] transition-all"
@@ -192,12 +253,23 @@ export const CraftCopilot: React.FC<CraftCopilotProps> = ({ onApplySpecification
                onClick={handleApply}
                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md glow-green flex items-center justify-center transition-all"
              >
-               <Play className="w-3.5 h-3.5 mr-1.5" /> Apply to 3D
+               <Play className="w-3.5 h-3.5 mr-1.5" /> Apply Here
              </button>
-          </div>
-          <div className="text-center pt-2">
-            <button onClick={() => setSpecification(null)} className="text-[10px] text-slate-500 hover:text-white underline">Start Over</button>
-          </div>
+             <button
+               onClick={handleSendToLaptop}
+               className="flex-1 py-2.5 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-bold shadow-md flex items-center justify-center transition-all relative overflow-hidden"
+             >
+               <Send className="w-3.5 h-3.5 mr-1.5" /> Send to Laptop
+             </button>
+           </div>
+           {handoffStatus && (
+             <div className="text-center pt-2">
+               <span className="text-[10px] text-[#0EA5E9] font-bold">{handoffStatus}</span>
+             </div>
+           )}
+           <div className="text-center pt-2">
+             <button onClick={() => setSpecification(null)} className="text-[10px] text-slate-500 hover:text-white underline">Start Over</button>
+           </div>
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { CraftSpecification } from '../types/copilot';
+import type { CraftSpecification } from '../types/copilot';
 
 export interface ValidationResult {
   isValid: boolean;

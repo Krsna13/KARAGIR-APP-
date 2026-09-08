@@ -105,10 +105,10 @@ export const BuyerDiscovery: React.FC<BuyerDiscoveryProps> = ({
       
       {/* 1. Hero Section */}
       <section className="relative overflow-hidden pt-8 pb-12 rounded-3xl bg-gradient-to-b from-[#1F1510] to-[#120B08] border border-[#2A1E17] px-6 sm:px-10 lg:px-12 shadow-2xl">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <div className="flex flex-col gap-8 items-start w-full">
           
           {/* Hero Left Content */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="w-full space-y-6">
             
             {/* Badge */}
             <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full border border-[#EAB308]/40 bg-[#EAB308]/10 text-[#EAB308] text-xs font-semibold">
@@ -311,7 +311,7 @@ export const BuyerDiscovery: React.FC<BuyerDiscoveryProps> = ({
           </div>
 
           {/* Compact Craft & Material Pills */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-[#2A1E17]/60">
+          <div className="flex flex-col gap-4 pt-2 border-t border-[#2A1E17]/60">
             <div>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                 Category Filter:
@@ -406,7 +406,7 @@ export const BuyerDiscovery: React.FC<BuyerDiscoveryProps> = ({
           </div>
         </div>
 
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+        <div className={viewMode === 'grid' ? 'flex flex-col gap-6 w-full' : 'space-y-4'}>
           {filteredArtisans.map((artisan) => (
             <div
               key={artisan.id}

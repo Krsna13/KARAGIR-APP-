@@ -548,7 +548,7 @@ export const FindLocalArtisansPage: React.FC<FindLocalArtisansPageProps> = ({
           <div
             className={
               viewMode === 'grid'
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                ? 'flex flex-col gap-6 w-full'
                 : 'space-y-4'
             }
           >
@@ -667,7 +667,7 @@ export const FindLocalArtisansPage: React.FC<FindLocalArtisansPageProps> = ({
                     </div>
 
                     {/* Card CTAs */}
-                    <div className="pt-3 border-t border-[#2A1E17] grid grid-cols-2 gap-2">
+                    <div className="pt-3 border-t border-[#2A1E17] flex flex-col gap-2.5">
                       <button
                         type="button"
                         onClick={() => handleLocateArtisanOnMap(artisan)}
@@ -812,7 +812,7 @@ export const FindLocalArtisansPage: React.FC<FindLocalArtisansPageProps> = ({
               </div>
 
               {/* Modal CTAs */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="flex flex-col gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => {

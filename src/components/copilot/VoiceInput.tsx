@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Mic, Square, RotateCcw, Check } from 'lucide-react';
+import { Mic, Square, RotateCcw, Check, Loader2 } from 'lucide-react';
+import { getVoiceAIProvider } from '../../services/voiceAIProvider';
 
 interface VoiceInputProps {
   onTranscriptChange: (transcript: string | null) => void;
 }
 
-type VoiceState = 'idle' | 'recording' | 'recorded';
+type VoiceState = 'idle' | 'recording' | 'transcribing' | 'recorded';
 
 export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscriptChange }) => {
   const [state, setState] = useState<VoiceState>('idle');
@@ -17,11 +18,19 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscriptChange }) =>
     onTranscriptChange(null);
   };
 
-  const handleStopRecording = () => {
-    setState('recorded');
-    // Simulated transcript
-    const mockTranscript = "I want a six feet Sagwan teak dining table for six people with carved legs and brass inlay.";
-    setLocalTranscript(mockTranscript);
+  const handleStopRecording = async () => {
+    setState('transcribing');
+    try {
+      const provider = getVoiceAIProvider();
+      // Using a mock content:// URI for simulation of audio capture
+      const transcript = await provider.transcribeAudio("content://media/external/audio/media/1");
+      setLocalTranscript(transcript);
+      setState('recorded');
+    } catch (e) {
+      console.error(e);
+      setLocalTranscript("Transcription failed. Please try again or type your requirement.");
+      setState('recorded');
+    }
   };
 
   const handleUseRecording = () => {
@@ -65,11 +74,21 @@ export const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscriptChange }) =>
         </div>
       )}
 
+      {state === 'transcribing' && (
+        <div className="flex flex-col items-center space-y-3 py-2">
+          <Loader2 className="w-8 h-8 text-[#EA580C] animate-spin" />
+          <span className="text-xs font-bold text-[#EA580C]">Transcribing on device...</span>
+        </div>
+      )}
+
       {state === 'recorded' && (
         <div className="w-full space-y-3">
-          <div className="p-3 bg-[#120B08] border border-[#2A1E17] rounded-lg text-xs text-slate-300 italic">
-            "{localTranscript}"
-          </div>
+          <textarea
+            value={localTranscript}
+            onChange={(e) => setLocalTranscript(e.target.value)}
+            className="w-full p-3 bg-[#120B08] border border-[#2A1E17] focus:border-[#EA580C] rounded-lg text-xs text-white resize-none shadow-inner transition-all"
+            rows={3}
+          />
           <div className="flex space-x-2">
             <button
               onClick={handleDiscard}

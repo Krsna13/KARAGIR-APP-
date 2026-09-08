@@ -21,6 +21,8 @@ import { getMaterialSpecByCategory, type RawMaterialSpec } from "../data/itemMat
 import { CraftCopilot } from "./copilot/CraftCopilot";
 import { mapSpecificationToCampaignState } from "../services/craftSpecificationMapper";
 import type { CraftSpecification } from "../types/copilot";
+import { getOfficeKitProvider } from "../services/officeKitProvider";
+import type { CraftHandoffPackage } from "../types/officeKit";
 
 type DimensionUnit = 'ft' | 'in' | 'cm' | 'm';
 
@@ -49,6 +51,17 @@ export const CustomerCampaignLauncher: React.FC = () => {
   );
   const [uploadedPhotoName, setUploadedPhotoName] = useState<string>('Ref_Sketch_DiningTable.jpg');
   const [is3DFullscreenOpen, setIs3DFullscreenOpen] = useState<boolean>(false);
+
+  // Office Kit State
+  const [incomingHandoff, setIncomingHandoff] = useState<CraftHandoffPackage | null>(null);
+
+  useEffect(() => {
+    const provider = getOfficeKitProvider();
+    const unsubscribe = provider.onHandoffReceived((pkg) => {
+      setIncomingHandoff(pkg);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // 🖼️ Image-to-3D Model Generation State
   const [image3DNotice, setImage3DNotice] = useState<string | null>(null);
@@ -430,12 +443,37 @@ export const CustomerCampaignLauncher: React.FC = () => {
           </span>
         </div>
 
-        {/* 3-COLUMN SIDE-BY-SIDE STUDIO ROW */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* MOBILE STACKED STUDIO ROW (was 3-COLUMN) */}
+        <div className="flex flex-col gap-6 items-start w-full">
 
           {/* PANEL 3: CATEGORY, SIZE EDITOR & REFERENCE PHOTO UPLOAD (LEFT - 4 COLS) */}
           <div className="lg:col-span-4 space-y-5 bg-[#120B08] p-5 rounded-2xl border border-[#3E2E24] shadow-inner">
             
+            {incomingHandoff && (
+              <div className="bg-[#0284C7]/20 border border-[#0EA5E9]/50 rounded-xl p-4 mb-4 shadow-lg animate-pulse-slow relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-12 h-12 bg-[#0EA5E9]/10 rounded-bl-full border-l border-b border-[#0EA5E9]/20"></div>
+                <h4 className="text-sm font-bold text-[#0EA5E9] mb-3 flex items-center">
+                  📱 New Craft Copilot Request
+                </h4>
+                <div className="text-xs text-slate-300 space-y-1 mb-4">
+                  <p><span className="text-slate-400">Product:</span> <strong className="text-white">{incomingHandoff.craftSpecification.product || 'Unknown'}</strong></p>
+                  <p><span className="text-slate-400">Material:</span> <strong className="text-[#EAB308]">{incomingHandoff.craftSpecification.material || 'Unknown'}</strong></p>
+                  <p><span className="text-slate-400">Dimensions:</span> <strong className="text-white font-mono">{incomingHandoff.craftSpecification.length_ft || '?'} × {incomingHandoff.craftSpecification.width_ft || '?'} ft</strong></p>
+                  <p><span className="text-slate-400">Seating:</span> <strong className="text-white">{incomingHandoff.craftSpecification.seating_capacity || 'N/A'}</strong></p>
+                  <p><span className="text-slate-400">Features:</span> <strong className="text-white">{incomingHandoff.craftSpecification.features.join(', ') || 'None'}</strong></p>
+                </div>
+                <button
+                  onClick={() => {
+                    handleApplyAiSpecification(incomingHandoff.craftSpecification);
+                    setIncomingHandoff(null);
+                  }}
+                  className="w-full py-2.5 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-bold transition-all flex justify-center items-center shadow-md"
+                >
+                  <Check className="w-4 h-4 mr-1.5" /> Open in Customizer
+                </button>
+              </div>
+            )}
+
             <CraftCopilot onApplySpecification={handleApplyAiSpecification} />
 
             <div className="border-t border-[#2A1E17] my-2"></div>
@@ -593,7 +631,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
               </div>
 
               {/* Inputs for Length, Width, Height in Selected Unit */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col gap-3">
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[10px] text-slate-400 uppercase font-bold">Length ({dimensionUnit}):</label>
@@ -789,7 +827,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="flex flex-col gap-3.5">
                 {selectedProduct.subcategories.map((subcat) => (
                   <div key={subcat.id} className="bg-[#1F1510] p-3.5 rounded-xl border border-[#2A1E17] space-y-2">
                     <span className="text-xs font-bold text-amber-300 block border-b border-[#2A1E17] pb-1 font-mono">
@@ -831,7 +869,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3">
               {PRIMARY_MATERIALS.map((m) => {
                 const isSelected = primaryMaterial.id === m.id;
                 return (
@@ -1007,7 +1045,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-[#3E2E24]">
+            <div className="flex flex-col gap-4 mt-4 pt-4 border-t border-[#3E2E24]">
               <div>
                 <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider mb-1.5">Craftsmanship Grade:</label>
                 <select className="w-full bg-[#120B08] border border-[#3E2E24] text-white font-semibold rounded-2xl p-3 text-xs" value={selectedGrade.id} onChange={(e) => setSelectedGrade(CRAFTSMANSHIP_GRADES.find((g) => g.id === e.target.value) || CRAFTSMANSHIP_GRADES[1])}>
@@ -1217,7 +1255,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
             </div>
 
             {/* ⚡ 5️⃣ DYNAMIC 4-GRID SPECIFICATIONS */}
-            <div className="grid grid-cols-2 gap-2 mt-3">
+            <div className="flex flex-col gap-2 mt-3">
               {/* JOINERY */}
               <div className="bg-[#120B08] p-2.5 rounded-lg border border-[#2A1E17] shadow-inner">
                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">JOINERY</span>
@@ -1254,7 +1292,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
             <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">
               6️⃣ Surface Finish & Polish:
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="flex flex-col gap-2.5">
               {SURFACE_FINISHES.map((f) => {
                 const isSelected = selectedFinish.id === f.id;
                 return (

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Camera, Upload, Trash2, Check } from 'lucide-react';
+import { Camera, Trash2, Check } from 'lucide-react';
 
 interface ReferenceImageInputProps {
   onImageChange: (imageUrl: string | null) => void;

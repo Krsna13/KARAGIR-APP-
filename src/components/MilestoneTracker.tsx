@@ -87,11 +87,11 @@ export const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ onBack, isAr
         </div>
       </div>
 
-      {/* Grid Layout: Timeline Left + Sidebar Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Mobile Stack Layout: Timeline Top + Sidebar Bottom */}
+      <div className="flex flex-col gap-8 w-full">
         
         {/* 3. Vertical Visual Progress Timeline */}
-        <div className="lg:col-span-8 bg-[#1F1510] border border-[#2A1E17] rounded-3xl p-6 sm:p-8 space-y-8 shadow-2xl">
+        <div className="bg-[#1F1510] border border-[#2A1E17] rounded-3xl p-6 sm:p-8 space-y-8 shadow-2xl">
           <div>
             <h2 className="text-xl font-bold text-white tracking-tight">Live Material Milestone Verification</h2>
             <p className="text-xs text-slate-400 mt-1">Funds are released progressively as workshop stages are verified.</p>
@@ -143,6 +143,19 @@ export const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ onBack, isAr
                     </div>
 
                     <p className="text-xs text-slate-300 leading-relaxed">{step.description}</p>
+
+                    {/* STAGE 8 MATERIAL TRACEABILITY INJECTION */}
+                    {step.title.includes('Material') && (
+                      <div className="mt-4 p-3 bg-emerald-950/20 border border-emerald-900/40 rounded-xl flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Material Verification ID</p>
+                          <p className="text-xs text-white font-mono">KAR-MAT-2026-97373</p>
+                        </div>
+                        <button className="px-3 py-1.5 bg-emerald-900/50 hover:bg-emerald-800 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-700/50 transition-colors">
+                          Verify Material
+                        </button>
+                      </div>
+                    )}
 
                     {/* ARTISAN VIEW CONTROLS */}
                     {isArtisanView && isInProgress && (
@@ -222,7 +235,7 @@ export const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ onBack, isAr
         </div>
 
         {/* 4. Sidebar Detail Cards */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="space-y-6">
           
           {/* Payment Escrow Protection Card */}
           <div className="bg-[#1F1510] border border-[#2A1E17] rounded-3xl p-6 space-y-4 shadow-xl">

@@ -1,4 +1,6 @@
-import { MultimodalCraftRequest, CraftSpecification } from '../types/copilot';
+import type { MultimodalCraftRequest, CraftSpecification } from '../types/copilot';
+import { Capacitor } from '@capacitor/core';
+import { KaaragirAINative } from './nativeAIApi';
 
 export interface CraftAIProvider {
   analyzeRequest(request: MultimodalCraftRequest): Promise<CraftSpecification>;
@@ -76,8 +78,28 @@ export class MockCraftAIProvider implements CraftAIProvider {
   }
 }
 
+export class LocalQwenCraftAIProvider implements CraftAIProvider {
+  async analyzeRequest(request: MultimodalCraftRequest): Promise<CraftSpecification> {
+    try {
+      const response = await KaaragirAINative.analyzeImageAndText({
+        text: (request.text || '') + ' ' + (request.voiceTranscript || ''),
+        imageUri: request.referenceImage
+      });
+      if (response.success) {
+        return response.specification;
+      }
+      throw new Error("Local Qwen inference failed.");
+    } catch (e) {
+      console.error("Qwen execution error", e);
+      throw e;
+    }
+  }
+}
+
 // Global provider selection
-let currentProvider: CraftAIProvider = new MockCraftAIProvider();
+let currentProvider: CraftAIProvider = Capacitor.isNativePlatform()
+  ? new LocalQwenCraftAIProvider()
+  : new MockCraftAIProvider();
 
 export function getCraftAIProvider(): CraftAIProvider {
   return currentProvider;
