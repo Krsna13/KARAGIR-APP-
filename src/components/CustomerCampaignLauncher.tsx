@@ -18,6 +18,9 @@ import { Embedded3DCanvas } from "./Embedded3DCanvas";
 import { MOCK_PRODUCTS } from "../data/mockData";
 import { generate3DModelFromImage } from "../services/imageTo3dService";
 import { getMaterialSpecByCategory, type RawMaterialSpec } from "../data/itemMaterialsDatabase";
+import { CraftCopilot } from "./copilot/CraftCopilot";
+import { mapSpecificationToCampaignState } from "../services/craftSpecificationMapper";
+import type { CraftSpecification } from "../types/copilot";
 
 type DimensionUnit = 'ft' | 'in' | 'cm' | 'm';
 
@@ -368,6 +371,27 @@ export const CustomerCampaignLauncher: React.FC = () => {
     }
   };
 
+  const handleApplyAiSpecification = (spec: CraftSpecification) => {
+    const update = mapSpecificationToCampaignState(spec);
+    
+    if (update.displayLength !== undefined) setDisplayLength(update.displayLength);
+    if (update.displayWidth !== undefined) setDisplayWidth(update.displayWidth);
+    if (update.displayHeight !== undefined) setDisplayHeight(update.displayHeight);
+    
+    if (update.customItemName !== undefined) {
+       setCustomItemName(update.customItemName);
+       setCategorySearchQuery(update.customItemName);
+    }
+    
+    if (update.primaryMaterial !== undefined) {
+       setPrimaryMaterial(update.primaryMaterial);
+    }
+    
+    if (update.aiDescription !== undefined) {
+       setAiDescription(update.aiDescription);
+    }
+  };
+
   return (
     <div className="w-full max-w-[1920px] mx-auto space-y-8 px-2 sm:px-4 lg:px-6">
 
@@ -411,6 +435,17 @@ export const CustomerCampaignLauncher: React.FC = () => {
 
           {/* PANEL 3: CATEGORY, SIZE EDITOR & REFERENCE PHOTO UPLOAD (LEFT - 4 COLS) */}
           <div className="lg:col-span-4 space-y-5 bg-[#120B08] p-5 rounded-2xl border border-[#3E2E24] shadow-inner">
+            
+            <CraftCopilot onApplySpecification={handleApplyAiSpecification} />
+
+            <div className="border-t border-[#2A1E17] my-2"></div>
+
+            <details className="group">
+              <summary className="text-xs font-bold text-slate-400 cursor-pointer list-none flex items-center justify-between hover:text-white transition-colors bg-[#1A120E] p-3 rounded-xl border border-[#2A1E17]">
+                <span>Edit Manually / Fallback Controls</span>
+                <span className="group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div className="pt-4 space-y-5">
 
             {/* 1️⃣ TOP: SELECT OR TYPE CUSTOM ITEM CATEGORY */}
             <div className="space-y-2 relative" ref={dropdownRef}>
@@ -822,8 +857,9 @@ export const CustomerCampaignLauncher: React.FC = () => {
             </div>
           </div>
 
-          
-</div>
+              </div>
+            </details>
+          </div>
         {/* PANEL 1: 3D ITEM INSPECTOR CANVAS (CENTER - 4 COLS) */}
         <div className="lg:col-span-4 space-y-4">
 
