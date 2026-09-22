@@ -1,29 +1,75 @@
-# Karagir Architecture & Data Flow
-
-This document explains the structural data flow of the Karagir application following its migration to a Supabase-backed architecture.
+# Kaaragir System Architecture & Component Graph
 
 ## Overview
-Karagir operates as a Single Page Application (SPA) leveraging pure React State (`App.tsx`) for view routing instead of external router libraries. 
+Kaaragir operates as a mobile-native application leveraging React 19, TypeScript, and Tailwind CSS v4, with a clean separation of presentation, business services, state contexts, and native mobile bridges.
 
-## 1. The React Context Layer
-The application has two central state providers:
-- `KaragirStoreContext.tsx`: Manages the active artisan session (login/register) and tracks the current artisan's draft store setup. 
-- `MaterialContext.tsx`: Handles complex state regarding active material selections, finishes, and dimensional adjustments on the 3D Customizer.
+---
 
-## 2. The Services Layer (`src/services/`)
-Components and Contexts **never** interact with the database directly. They invoke pure business-logic functions located in `src/services/`:
-- `storageService.ts`: Facilitates Auth, Profile CRUD, and Product CRUD.
-- `geoService.ts`: Executes radius searches to find artisans near a buyer.
-- `pricingService.ts`: Pure mathematical functions for recalculating base prices against raw material adjustments.
-- `imageService.ts`: First attempts to fetch an image from the Supabase Storage CDN. If not found, it generates a luxury studio image via Pollinations AI and uploads it back to Supabase.
+## 🗺️ Architectural Graph
 
-## 3. The Supabase Data Access Layer (`src/lib/supabase/`)
-The `services` layer calls the dedicated domain wrappers located in `lib/supabase`:
-- `artisans.ts`: Typed queries against the `artisans` table, including the `get_artisans_within_radius` RPC call.
-- `products.ts`: Typed queries against the `products` table.
-- `auth.ts`: Wrapper for Supabase Phone Authentication.
-- `storage.ts`: Wrapper for Supabase Storage buckets.
+```mermaid
+graph TD
+    subgraph UI_Layer [Mobile App UI Layer]
+        Shell[MobileAppShell]
+        Nav[MobileBottomNav (Pinned)]
+        Home[MobileHome]
+        Explore[FindLocalArtisansPage & Leaflet Map]
+        Copilot[CraftCopilot & 3D Viewer]
+        Orders[MilestoneTracker & Escrow]
+        Portal[ArtisanPortal & Radar]
+    end
 
-## 4. The Database (PostgreSQL + PostGIS)
-- **Artisans**: Uses `geography(Point, 4326)` for precise spatial queries.
-- **RLS**: Row-Level Security policies are strictly default-deny. Artisans can only mutate their own rows and products.
+    subgraph State_Layer [React State & Contexts]
+        MatCtx[MaterialContext]
+        StoreCtx[KaragirStoreContext]
+        EscrowCtx[EscrowContext]
+    end
+
+    subgraph Service_Layer [Business Logic & Services]
+        PriceSvc[pricingService (Deterministic Math)]
+        GeoSvc[geoService (Spatial Radii)]
+        ImgSvc[imageTo3dService & ImageUtils]
+        OfficeKit[officeKitProvider]
+    end
+
+    subgraph Backend_Layer [Storage & Data Access]
+        Supabase[(Supabase PostgreSQL & PostGIS)]
+        LocalStorage[(Local SQLite / Cache)]
+    end
+
+    Shell --> Nav
+    Shell --> Home
+    Shell --> Explore
+    Shell --> Copilot
+    Shell --> Orders
+    Shell --> Portal
+
+    Copilot --> MatCtx
+    Orders --> EscrowCtx
+    Portal --> StoreCtx
+
+    Copilot --> PriceSvc
+    Copilot --> ImgSvc
+    Explore --> GeoSvc
+    Copilot --> OfficeKit
+
+    StoreCtx --> Supabase
+    EscrowCtx --> Supabase
+```
+
+---
+
+## 1. Mobile Presentation Layer (`src/components/mobile/`)
+- **`MobileAppShell.tsx`**: Manages the phone viewport, status bar, and active bottom tab viewports.
+- **`MobileBottomNav.tsx`**: 5-tab pinned navigation bar with quick Craft AI FAB button.
+- **`MobileHeader.tsx`**: Brand header with dynamic locality switcher and mode toggle.
+
+## 2. Business Services Layer (`src/services/`)
+- **`pricingService.ts`**: Pure mathematical volumetric pricing functions based on physical dimensions (Length × Width × Height) and certified material rates.
+- **`geoService.ts`**: Calculates geographic distance from user location to regional artisan workshops.
+- **`officeKitProvider.ts`**: Cross-device continuity provider for syncing mobile specifications to desktop 3D viewers.
+
+## 3. The State Context Layer (`src/context/`)
+- **`MaterialContext.tsx`**: Handles active material slot selections, wood types, brass accents, and finishes for the 3D model.
+- **`KaragirStoreContext.tsx`**: Manages artisan login sessions, store configurations, and product catalog states.
+- **`EscrowContext.tsx`**: Manages order milestones, proof verification states, and digital vault payouts.

@@ -60,7 +60,7 @@ export class MockOfficeKitProvider implements OfficeKitProvider {
 }
 
 /**
- * LOCAL PROVIDER for Actual Android/iQOO hardware
+ * LOCAL PROVIDER for Native Android hardware
  * Bridges to the native capabilities (Pending implementation in KaaragirAINative).
  */
 export class LocalOfficeKitProvider implements OfficeKitProvider {

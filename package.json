@@ -8,11 +8,14 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed:market-data": "node scripts/seedMarketListings.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",
+    "@capacitor/camera": "^8.2.4",
     "@capacitor/core": "^8.5.1",
+    "@imgly/background-removal": "^1.7.0",
     "@supabase/supabase-js": "^2.112.3",
     "@tailwindcss/vite": "^4.3.3",
     "@types/leaflet": "^1.9.22",
@@ -36,6 +39,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
+    "canvas": "^3.2.3",
     "jsdom": "^29.1.1",
     "oxlint": "^1.75.0",
     "typescript": "~6.0.2",

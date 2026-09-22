@@ -43,6 +43,7 @@ export type Database = {
           category?: string | null
           created_at?: string | null
         }
+        Relationships: []
       }
       products: {
         Row: {
@@ -54,6 +55,18 @@ export type Database = {
           price: number
           image_urls: string[] | null
           created_at: string | null
+          image_processing_status: 'pending' | 'processing' | 'enhanced' | 'failed' | null
+          original_image_url: string | null
+          enhanced_image_url: string | null
+          description_en: string | null
+          description_hi: string | null
+          voice_note_url: string | null
+          transcript_raw: string | null
+          price_suggested_ml: number | null
+          price_deterministic: number | null
+          price_final: number | null
+          pricing_confidence: number | null
+          final_image_choice: 'original' | 'enhanced' | null
         }
         Insert: {
           id?: string
@@ -64,6 +77,18 @@ export type Database = {
           price: number
           image_urls?: string[] | null
           created_at?: string | null
+          image_processing_status?: 'pending' | 'processing' | 'enhanced' | 'failed' | null
+          original_image_url?: string | null
+          enhanced_image_url?: string | null
+          description_en?: string | null
+          description_hi?: string | null
+          voice_note_url?: string | null
+          transcript_raw?: string | null
+          price_suggested_ml?: number | null
+          price_deterministic?: number | null
+          price_final?: number | null
+          pricing_confidence?: number | null
+          final_image_choice?: 'original' | 'enhanced' | null
         }
         Update: {
           id?: string
@@ -74,7 +99,77 @@ export type Database = {
           price?: number
           image_urls?: string[] | null
           created_at?: string | null
+          image_processing_status?: 'pending' | 'processing' | 'enhanced' | 'failed' | null
+          original_image_url?: string | null
+          enhanced_image_url?: string | null
+          description_en?: string | null
+          description_hi?: string | null
+          voice_note_url?: string | null
+          transcript_raw?: string | null
+          price_suggested_ml?: number | null
+          price_deterministic?: number | null
+          price_final?: number | null
+          pricing_confidence?: number | null
+          final_image_choice?: 'original' | 'enhanced' | null
         }
+        Relationships: []
+      }
+      market_reference_listings: {
+        Row: {
+          id: string
+          category: string
+          material: string
+          dimensions_volume: number | null
+          listed_price: number
+          source: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          category: string
+          material: string
+          dimensions_volume?: number | null
+          listed_price: number
+          source?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          category?: string
+          material?: string
+          dimensions_volume?: number | null
+          listed_price?: number
+          source?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      dataset_samples: {
+        Row: {
+          id: string
+          storage_path: string
+          category: 'Woodwork' | 'Pottery' | 'Brasscraft' | 'Textile' | 'Furniture' | 'Metal'
+          lighting_condition: 'Good' | 'Poor' | 'Mixed'
+          background_type: 'Clean' | 'Cluttered'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          storage_path: string
+          category: 'Woodwork' | 'Pottery' | 'Brasscraft' | 'Textile' | 'Furniture' | 'Metal'
+          lighting_condition: 'Good' | 'Poor' | 'Mixed'
+          background_type: 'Clean' | 'Cluttered'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          storage_path?: string
+          category?: 'Woodwork' | 'Pottery' | 'Brasscraft' | 'Textile' | 'Furniture' | 'Metal'
+          lighting_condition?: 'Good' | 'Poor' | 'Mixed'
+          background_type?: 'Clean' | 'Cluttered'
+          created_at?: string
+        }
+        Relationships: []
       }
       materials: {
         Row: {
@@ -107,6 +202,7 @@ export type Database = {
           description?: string | null
           created_at?: string | null
         }
+        Relationships: []
       }
       orders: {
         Row: {
@@ -136,6 +232,7 @@ export type Database = {
           final_price?: number
           created_at?: string | null
         }
+        Relationships: []
       }
     }
     Views: {

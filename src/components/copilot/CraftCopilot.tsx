@@ -45,7 +45,7 @@ export const CraftCopilot: React.FC<CraftCopilotProps> = ({ onApplySpecification
       const result = await provider.analyzeRequest(request);
       setSpecification(result);
       setValidation(validateCraftSpecification(result));
-    } catch (e) {
+    } catch {
       setValidation({ isValid: false, errors: ["Failed to process AI request."] });
     } finally {
       setIsProcessing(false);

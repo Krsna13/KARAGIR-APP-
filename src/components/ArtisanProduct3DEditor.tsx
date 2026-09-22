@@ -55,10 +55,10 @@ export const ArtisanProduct3DEditor: React.FC<ArtisanProduct3DEditorProps> = ({ 
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="flex flex-col space-y-4 items-start w-full">
         
-        {/* LEFT COLUMN: CATEGORIES SIDEBAR */}
-        <div className="lg:col-span-3 bg-[#1F1510] border border-[#2A1E17] rounded-2xl p-5 shadow-inner sticky top-6">
+        {/* PANEL 1: CATEGORIES SIDEBAR */}
+        <div className="w-full bg-[#1F1510] border border-[#2A1E17] rounded-2xl p-4 shadow-inner">
           <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider">
             Explore {artisan ? artisan.name.split(" ")[0] : "Lakshya"}'s Work
           </h3>
@@ -83,20 +83,20 @@ export const ArtisanProduct3DEditor: React.FC<ArtisanProduct3DEditorProps> = ({ 
           </div>
         </div>
 
-        {/* CENTER COLUMN: 3D THREE.JS VIEWPORT SIMULATION */}
-        <div className="lg:col-span-5 bg-[#1F1510] border border-[#2A1E17] rounded-2xl p-5 flex flex-col justify-between items-center relative min-h-[500px] shadow-inner lg:sticky lg:top-6">
+        {/* PANEL 2: 3D VIEWPORT SIMULATION */}
+        <div className="w-full bg-[#1F1510] border border-[#2A1E17] rounded-2xl p-4 flex flex-col justify-between items-center relative min-h-[380px] shadow-inner">
           
           <div className="absolute top-3 left-3 bg-[#EA580C] text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full text-white glow-orange flex items-center space-x-1">
             <Eye className="w-3 h-3" />
             <span>360° Interactive 3D Model</span>
           </div>
 
-          <div className="my-auto text-center space-y-3">
-            <div className="text-7xl animate-pulse">🪵</div>
+          <div className="my-auto text-center space-y-3 py-6">
+            <div className="text-6xl animate-pulse">🪵</div>
             <p className="text-xs font-bold text-white">Click & Drag to Rotate 3D Model</p>
             
-            <div className="text-xs bg-[#1A120E] text-[#EAB308] px-3.5 py-2 rounded-xl border border-[#EA580C]/30 inline-block font-mono">
-              Texture Active: <strong>{selectedWood.name}</strong> ({selectedPolish.name})
+            <div className="text-xs bg-[#1A120E] text-[#EAB308] px-3 py-1.5 rounded-xl border border-[#EA580C]/30 inline-block font-mono">
+              Texture: <strong>{selectedWood.name}</strong> ({selectedPolish.name})
             </div>
 
             <button
@@ -107,14 +107,14 @@ export const ArtisanProduct3DEditor: React.FC<ArtisanProduct3DEditorProps> = ({ 
             </button>
           </div>
 
-          <div className="w-full text-center text-[11px] text-slate-400 border-t border-[#2A1E17] pt-3 font-mono">
+          <div className="w-full text-center text-[10px] text-slate-400 border-t border-[#2A1E17] pt-2.5 font-mono">
             Verified Master Karagir Workshop • Satpur MIDC, Nashik
           </div>
 
         </div>
 
-        {/* RIGHT COLUMN: LIVE PRICE CONFIGURATOR PANEL */}
-        <div className="lg:col-span-4 bg-[#1F1510] border border-[#2A1E17] rounded-2xl p-6 flex flex-col justify-between space-y-6 shadow-xl">
+        {/* PANEL 3: LIVE PRICE CONFIGURATOR PANEL */}
+        <div className="w-full bg-[#1F1510] border border-[#2A1E17] rounded-2xl p-4 flex flex-col justify-between space-y-4 shadow-xl">
           <div>
             <span className="text-[10px] uppercase font-bold text-[#EA580C]">Storefront Configurator</span>
             <h3 className="text-xl font-bold text-white mt-0.5 leading-snug">

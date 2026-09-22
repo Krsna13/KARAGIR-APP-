@@ -1,6 +1,9 @@
 // Provide any global test setup here
 import { vi } from 'vitest';
 
+// @ts-ignore
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+
 // Example: mock matchMedia for jsdom
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

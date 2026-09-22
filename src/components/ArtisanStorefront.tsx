@@ -36,7 +36,7 @@ export const ArtisanStorefront: React.FC<ArtisanStorefrontProps> = ({
   });
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-4 pb-20 font-sans">
       
       {/* Back Button Navigation Header */}
       {onBack && (
@@ -44,65 +44,65 @@ export const ArtisanStorefront: React.FC<ArtisanStorefrontProps> = ({
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-[#1F1510] hover:bg-[#261B15] text-slate-200 hover:text-white border border-[#3E2E24] text-xs font-extrabold transition-all shadow-md group"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#1A120E] hover:bg-[#261B15] text-slate-200 hover:text-white border border-[#2A1E17] text-xs font-bold transition-all shadow"
           >
-            <ArrowLeft className="w-4 h-4 text-[#EA580C] group-hover:-translate-x-1 transition-transform" />
-            <span>← Back to Artisans Directory</span>
+            <ArrowLeft className="w-3.5 h-3.5 text-[#EA580C]" />
+            <span>Back</span>
           </button>
         </div>
       )}
       
       {/* 1. Workshop Hero Header */}
-      <section className="relative rounded-3xl overflow-hidden border border-[#2A1E17] bg-[#1F1510] shadow-2xl">
-        <div className="relative h-64 sm:h-80 overflow-hidden">
+      <section className="relative rounded-2xl overflow-hidden border border-[#2A1E17] bg-[#1A120E] shadow-xl">
+        <div className="relative h-44 overflow-hidden">
           <img
             src={artisan.coverUrl}
             alt={artisan.shopName}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#1F1510] via-black/40 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1A120E] via-black/30 to-transparent" />
 
-          <div className="absolute top-4 left-4 flex items-center space-x-2">
-            <span className="flex items-center space-x-1 px-3 py-1 rounded-full bg-[#120B08]/80 text-emerald-400 text-xs font-semibold backdrop-blur-md border border-emerald-900">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Verified Karagir Workshop</span>
-            </span>
-            <span className="flex items-center space-x-1 px-3 py-1 rounded-full bg-[#120B08]/80 text-slate-300 text-xs font-mono backdrop-blur-md border border-[#2A1E17]">
-              <MapPin className="w-3.5 h-3.5 text-[#EA580C]" />
-              <span>{artisan.distanceKm} km in {artisan.locality}, Nashik</span>
+          <div className="absolute top-2.5 left-2.5 flex items-center space-x-1.5">
+            <span className="flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-[#120B08]/90 text-emerald-400 text-[10px] font-bold backdrop-blur-md border border-emerald-900">
+              <ShieldCheck className="w-3 h-3 text-emerald-400" />
+              <span>Verified</span>
             </span>
           </div>
 
           <button
             onClick={() => onOpenReel(artisan)}
-            className="absolute top-4 right-4 flex items-center space-x-2 px-4 py-2 rounded-full bg-[#EA580C] hover:bg-[#F97316] text-white text-xs font-bold shadow-xl transition-all glow-orange"
+            className="absolute top-2.5 right-2.5 flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#EA580C] hover:bg-[#F97316] text-white text-[10px] font-bold shadow-lg transition-all"
           >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>15s Live Workshop Reel</span>
+            <Play className="w-3 h-3 fill-current" />
+            <span>15s Live Reel</span>
           </button>
         </div>
 
-        <div className="px-6 sm:px-10 pb-8 -mt-16 relative z-10 flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
-          <div className="flex items-end space-x-5">
+        {/* Workshop Profile Details */}
+        <div className="px-4 pb-4 -mt-8 relative z-10 space-y-3">
+          <div className="flex items-end space-x-3">
             <img
               src={artisan.avatarUrl}
               alt={artisan.name}
-              className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-[#1F1510] shadow-2xl"
+              className="w-16 h-16 rounded-2xl object-cover border-2 border-[#EA580C] shadow-xl shrink-0 bg-[#120B08]"
             />
-            <div className="space-y-1 mb-1">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white">{artisan.shopName}</h1>
-              <p className="text-sm font-semibold text-slate-300">
-                Master Karagir: <span className="text-[#EA580C]">{artisan.name}</span> ({artisan.experienceYears}+ Yrs Exp)
+            <div className="space-y-0.5 overflow-hidden">
+              <h1 className="text-base font-bold text-white truncate">{artisan.shopName}</h1>
+              <p className="text-xs text-[#EA580C] font-semibold truncate">
+                {artisan.name} • {artisan.experienceYears}+ Yrs Exp
               </p>
-              <div className="flex items-center space-x-4 text-xs text-slate-400">
-                <span className="flex items-center text-amber-400 font-bold">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 mr-1" />
-                  {artisan.rating} ({artisan.reviewsCount} verified reviews)
-                </span>
-                <span>•</span>
-                <span>Response time: <strong className="text-white">{artisan.responseTime}</strong></span>
-              </div>
             </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] text-slate-400 bg-[#120B08] p-2 rounded-xl border border-[#2A1E17]">
+            <span className="flex items-center text-amber-400 font-bold">
+              <Star className="w-3.5 h-3.5 fill-amber-400 mr-1" />
+              {artisan.rating} ({artisan.reviewsCount} reviews)
+            </span>
+            <span className="flex items-center text-slate-300">
+              <MapPin className="w-3 h-3 text-[#EA580C] mr-1" />
+              {artisan.locality}
+            </span>
           </div>
 
           <button 
@@ -110,10 +110,10 @@ export const ArtisanStorefront: React.FC<ArtisanStorefrontProps> = ({
               setOrderPlaced(true);
               setTimeout(() => setOrderPlaced(false), 4000);
             }}
-            className={`px-6 py-3 rounded-xl text-xs font-bold transition-all shadow-lg flex items-center space-x-2 ${
+            className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all shadow flex items-center justify-center space-x-1.5 ${
               orderPlaced 
-                ? 'bg-emerald-600 text-white border border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
-                : 'bg-[#EA580C] hover:bg-[#F97316] text-white glow-orange'
+                ? 'bg-emerald-600 text-white border border-emerald-400'
+                : 'bg-[#EA580C] hover:bg-[#F97316] text-white'
             }`}
           >
             {orderPlaced ? (
@@ -124,47 +124,48 @@ export const ArtisanStorefront: React.FC<ArtisanStorefrontProps> = ({
             ) : (
               <>
                 <Hammer className="w-4 h-4" />
-                <span>Request Custom Order</span>
+                <span>Request Custom Order from {artisan.name}</span>
               </>
             )}
           </button>
         </div>
       </section>
 
-      {/* Removed embedded ArtisanProduct3DEditor */}
+      {/* 2. In-Store Product Catalog */}
+      <section className="space-y-3">
+        <div className="space-y-2">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search workshop catalog..."
+              className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#1A120E] border border-[#2A1E17] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#EA580C]"
+            />
+          </div>
 
-      {/* 3. In-Store Product Catalog */}
-      <section className="space-y-6">
-        <div className="bg-[#1F1510] p-4 rounded-2xl border border-[#2A1E17] flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-2 overflow-x-auto w-full md:w-auto py-1">
+          {/* Filter Pills */}
+          <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
             {filterPills.map((pill) => (
               <button
                 key={pill}
                 onClick={() => setActiveFilter(pill)}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                   activeFilter === pill
-                    ? 'bg-[#EA580C] text-white shadow-md'
-                    : 'bg-[#120B08] text-slate-400 hover:text-white border border-[#2A1E17]'
+                    ? 'bg-[#EA580C] text-white shadow'
+                    : 'bg-[#1A120E] text-slate-400 hover:text-white border border-[#2A1E17]'
                 }`}
               >
                 {pill}
               </button>
             ))}
           </div>
-
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search workshop catalog..."
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#120B08] border border-[#2A1E17] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#EA580C]"
-            />
-          </div>
         </div>
 
-        <div className="flex flex-col gap-6 w-full">
+        {/* Product Cards */}
+        <div className="space-y-3 w-full">
           {filteredProducts.map((product) => (
             <ProductCard 
               key={product.id}
@@ -175,7 +176,7 @@ export const ArtisanStorefront: React.FC<ArtisanStorefrontProps> = ({
         </div>
       </section>
 
-      {/* 3D Inspection Viewport Modal / Detail Modal */}
+      {/* 3D Inspection Viewport Modal */}
       <ProductDetailModal
         product={selectedProduct}
         isOpen={selectedProduct !== null}

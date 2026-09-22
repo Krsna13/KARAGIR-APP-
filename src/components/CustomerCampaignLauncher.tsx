@@ -11,7 +11,7 @@ import {
 } from "../data/karagirPricingMockData";
 import {
   Hammer, Sparkles, AlertTriangle, Send, Check, Search, ChevronDown, Plus, Ruler, Calculator,
-  Camera, Upload, Wand2, Trash2, Eye, FileText, Box
+  Camera, Upload, Wand2, Trash2, Eye, FileText, Box, ArrowRight, ArrowLeft
 } from "lucide-react";
 import { ThreeDProductViewer } from "./ThreeDProductViewer";
 import { Embedded3DCanvas } from "./Embedded3DCanvas";
@@ -25,8 +25,12 @@ import { getOfficeKitProvider } from "../services/officeKitProvider";
 import type { CraftHandoffPackage } from "../types/officeKit";
 
 type DimensionUnit = 'ft' | 'in' | 'cm' | 'm';
+type StageId = 1 | 2 | 3;
 
 export const CustomerCampaignLauncher: React.FC = () => {
+  // Progressive Stage Workflow: 1 = Requirements & Specs, 2 = 3D Studio & Add-ons, 3 = Pricing & Broadcast
+  const [activeStage, setActiveStage] = useState<StageId>(1);
+
   // Section 1: Item Category Search & Custom Typing State
   const [selectedProduct, setSelectedProduct] = useState(PRODUCT_BASE_CATALOG[2]); // Default Dining Table
   const [customItemName, setCustomItemName] = useState<string>('');
@@ -403,89 +407,132 @@ export const CustomerCampaignLauncher: React.FC = () => {
     if (update.aiDescription !== undefined) {
        setAiDescription(update.aiDescription);
     }
+
+    // Auto-advance to 3D Customizer stage upon successful AI parsing
+    setActiveStage(2);
   };
 
   return (
-    <div className="w-full max-w-[1920px] mx-auto space-y-8 px-2 sm:px-4 lg:px-6">
+    <div className="w-full max-w-[1920px] mx-auto space-y-6 px-2 sm:px-4 lg:px-6">
 
-      {/* FULL WIDTH HEADER BANNER */}
-      <div className="bg-gradient-to-r from-[#1F1510] via-[#1A120E] to-[#120B08] p-6 sm:p-8 rounded-3xl border border-[#3E2E24] shadow-2xl space-y-2">
-        <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-[#EA580C]/15 text-[#EA580C] text-xs font-bold border border-[#EA580C]/40 glow-orange">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Custom Campaign Studio & Interactive 3D Estimator</span>
+      {/* COMPACT APP-LIKE HEADER */}
+      <div className="bg-gradient-to-r from-[#1F1510] via-[#1A120E] to-[#120B08] p-4 sm:p-5 rounded-2xl border border-[#3E2E24] shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="space-y-1">
+          <div className="inline-flex items-center space-x-2 px-2.5 py-0.5 rounded-full bg-[#EA580C]/15 text-[#EA580C] text-[11px] font-bold border border-[#EA580C]/40">
+            <Sparkles className="w-3 h-3" />
+            <span>Craft AI Copilot & 3D Estimator</span>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2">
+            <Hammer className="w-5 h-5 text-[#EA580C]" />
+            <span>Custom Furniture Studio</span>
+          </h2>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2.5">
-          <Hammer className="w-7 h-7 text-[#EA580C]" />
-          <span>Launch Custom Campaign & Get Quotes</span>
-        </h2>
-        <p className="text-xs text-slate-300 leading-relaxed max-w-4xl">
-          Specify physical item dimensions, upload reference photos, describe custom features with AI specs, and inspect live 3D material textures in real time.
-        </p>
+
+        <div className="flex items-center gap-2 text-xs">
+          <span className="font-mono text-emerald-400 bg-emerald-950/80 px-2.5 py-1 rounded-full border border-emerald-800/80 font-bold flex items-center gap-1.5 shadow">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Real-Time 3D Sync</span>
+          </span>
+        </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 🧊 TOP UNIFIED 3D STUDIO, AI ASSISTANT, CATEGORY, SIZES & PHOTO UPLOAD HUB */}
-      {/* ========================================================================= */}
-      <div className="bg-[#1F1510] p-6 sm:p-8 rounded-3xl border-2 border-[#EA580C]/70 shadow-2xl space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-[#2A1E17] pb-4 gap-3">
-          <div className="flex items-center space-x-2.5">
-            <Box className="w-6 h-6 text-[#EA580C]" />
-            <div>
-              <h3 className="text-base sm:text-lg font-extrabold text-white uppercase tracking-wider">
-                3D Interactive Studio, AI Assistant & Custom Size Control Center
-              </h3>
-              <p className="text-xs text-slate-400">Inspect 3D model (Left), type AI prompt commands (Center), and edit category, dimensions & upload sketch (Right) live!</p>
-            </div>
+      {/* 3-STAGE PROGRESS STEPPER BAR */}
+      <div className="bg-[#1A120E] p-2.5 sm:p-3 rounded-2xl border border-[#3E2E24] shadow-lg">
+        <div className="flex items-center justify-between mb-2.5 px-1">
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-[#EA580C] animate-ping"></span>
+            <span className="text-[11px] font-bold text-slate-300 tracking-wider uppercase">Project Workflow</span>
           </div>
-          <span className="text-xs font-mono text-emerald-400 bg-emerald-950 px-3 py-1 rounded-full border border-emerald-800 font-bold flex items-center gap-1.5 shadow shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Real-Time 3D & Image Sync</span>
+          <span className="text-[10px] font-mono text-amber-400 font-bold bg-[#120B08] px-2.5 py-0.5 rounded-md border border-[#2A1E17]">
+            Stage {activeStage} of 3
           </span>
         </div>
 
-        {/* MOBILE STACKED STUDIO ROW (was 3-COLUMN) */}
-        <div className="flex flex-col gap-6 items-start w-full">
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { id: 1 as StageId, title: "1. Specs", subtitle: "Describe & Size", icon: Ruler },
+            { id: 2 as StageId, title: "2. 3D Studio", subtitle: "Visuals & Add-ons", icon: Box },
+            { id: 3 as StageId, title: "3. Quote", subtitle: "Price & Launch", icon: Calculator },
+          ]).map((stage) => {
+            const Icon = stage.icon;
+            const isActive = activeStage === stage.id;
+            const isCompleted = activeStage > stage.id;
 
-          {/* PANEL 3: CATEGORY, SIZE EDITOR & REFERENCE PHOTO UPLOAD (LEFT - 4 COLS) */}
-          <div className="lg:col-span-4 space-y-5 bg-[#120B08] p-5 rounded-2xl border border-[#3E2E24] shadow-inner">
-            
-            {incomingHandoff && (
-              <div className="bg-[#0284C7]/20 border border-[#0EA5E9]/50 rounded-xl p-4 mb-4 shadow-lg animate-pulse-slow relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-12 h-12 bg-[#0EA5E9]/10 rounded-bl-full border-l border-b border-[#0EA5E9]/20"></div>
-                <h4 className="text-sm font-bold text-[#0EA5E9] mb-3 flex items-center">
-                  📱 New Craft Copilot Request
-                </h4>
-                <div className="text-xs text-slate-300 space-y-1 mb-4">
-                  <p><span className="text-slate-400">Product:</span> <strong className="text-white">{incomingHandoff.craftSpecification.product || 'Unknown'}</strong></p>
-                  <p><span className="text-slate-400">Material:</span> <strong className="text-[#EAB308]">{incomingHandoff.craftSpecification.material || 'Unknown'}</strong></p>
-                  <p><span className="text-slate-400">Dimensions:</span> <strong className="text-white font-mono">{incomingHandoff.craftSpecification.length_ft || '?'} × {incomingHandoff.craftSpecification.width_ft || '?'} ft</strong></p>
-                  <p><span className="text-slate-400">Seating:</span> <strong className="text-white">{incomingHandoff.craftSpecification.seating_capacity || 'N/A'}</strong></p>
-                  <p><span className="text-slate-400">Features:</span> <strong className="text-white">{incomingHandoff.craftSpecification.features.join(', ') || 'None'}</strong></p>
+            return (
+              <button
+                key={stage.id}
+                type="button"
+                onClick={() => setActiveStage(stage.id)}
+                className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border text-center transition-all ${
+                  isActive
+                    ? "bg-[#EA580C] border-[#EA580C] text-white shadow-lg glow-orange"
+                    : isCompleted
+                    ? "bg-[#1F1510] border-[#EA580C]/40 text-amber-300 hover:border-[#EA580C]"
+                    : "bg-[#120B08] border-[#2A1E17] text-slate-400 hover:border-[#3E2E24] hover:text-slate-200"
+                }`}
+              >
+                <div className="flex items-center space-x-1 sm:space-x-1.5">
+                  <Icon className="w-3.5 h-3.5" />
+                  <span className="text-xs font-bold whitespace-nowrap">{stage.title}</span>
                 </div>
-                <button
-                  onClick={() => {
-                    handleApplyAiSpecification(incomingHandoff.craftSpecification);
-                    setIncomingHandoff(null);
-                  }}
-                  className="w-full py-2.5 rounded-lg bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-bold transition-all flex justify-center items-center shadow-md"
-                >
-                  <Check className="w-4 h-4 mr-1.5" /> Open in Customizer
-                </button>
+                <span className={`text-[9px] sm:text-[10px] hidden xs:block ${isActive ? "text-orange-100 font-medium" : "text-slate-500"}`}>
+                  {stage.subtitle}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 📋 STAGE 1: REQUIREMENTS, VOICE COPILOT & SPECIFICATIONS                 */}
+      {/* ========================================================================= */}
+      {activeStage === 1 && (
+        <div className="space-y-6 animate-fadeIn">
+          
+          {/* Office Kit Handoff Banner if present */}
+          {incomingHandoff && (
+            <div className="bg-[#0284C7]/20 border border-[#0EA5E9]/50 rounded-2xl p-4 shadow-lg animate-pulse-slow relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-[#0EA5E9]/10 rounded-bl-full border-l border-b border-[#0EA5E9]/20"></div>
+              <h4 className="text-sm font-bold text-[#0EA5E9] mb-2 flex items-center">
+                📱 New Craft Copilot Request
+              </h4>
+              <div className="text-xs text-slate-300 space-y-1 mb-3">
+                <p><span className="text-slate-400">Product:</span> <strong className="text-white">{incomingHandoff.craftSpecification.product || 'Unknown'}</strong></p>
+                <p><span className="text-slate-400">Material:</span> <strong className="text-[#EAB308]">{incomingHandoff.craftSpecification.material || 'Unknown'}</strong></p>
+                <p><span className="text-slate-400">Dimensions:</span> <strong className="text-white font-mono">{incomingHandoff.craftSpecification.length_ft || '?'} × {incomingHandoff.craftSpecification.width_ft || '?'} ft</strong></p>
+                <p><span className="text-slate-400">Features:</span> <strong className="text-white">{incomingHandoff.craftSpecification.features.join(', ') || 'None'}</strong></p>
               </div>
-            )}
+              <button
+                type="button"
+                onClick={() => {
+                  handleApplyAiSpecification(incomingHandoff.craftSpecification);
+                  setIncomingHandoff(null);
+                  setActiveStage(2);
+                }}
+                className="w-full py-2.5 rounded-xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white text-xs font-bold transition-all flex justify-center items-center shadow-md"
+              >
+                <Check className="w-4 h-4 mr-1.5" /> Apply & Open in 3D Studio
+              </button>
+            </div>
+          )}
 
-            <CraftCopilot onApplySpecification={handleApplyAiSpecification} />
+          {/* AI Voice & Prompt Requirement Copilot */}
+          <CraftCopilot onApplySpecification={handleApplyAiSpecification} />
 
-            <div className="border-t border-[#2A1E17] my-2"></div>
+          {/* Specifications & Blueprint Card */}
+          <div className="bg-[#120B08] p-4 sm:p-6 rounded-2xl border border-[#3E2E24] shadow-inner space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#2A1E17]">
+              <div className="flex items-center space-x-2">
+                <Ruler className="w-4 h-4 text-[#EA580C]" />
+                <h4 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
+                  Product Dimensions & Material Specifications
+                </h4>
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono">Stage 1 Controls</span>
+            </div>
 
-            <details className="group">
-              <summary className="text-xs font-bold text-slate-400 cursor-pointer list-none flex items-center justify-between hover:text-white transition-colors bg-[#1A120E] p-3 rounded-xl border border-[#2A1E17]">
-                <span>Edit Manually / Fallback Controls</span>
-                <span className="group-open:rotate-180 transition-transform">▼</span>
-              </summary>
-              <div className="pt-4 space-y-5">
-
-            {/* 1️⃣ TOP: SELECT OR TYPE CUSTOM ITEM CATEGORY */}
+            {/* 1️⃣ SELECT OR TYPE CUSTOM ITEM CATEGORY */}
             <div className="space-y-2 relative" ref={dropdownRef}>
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">
@@ -518,12 +565,12 @@ export const CustomerCampaignLauncher: React.FC = () => {
                 <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-300 ${isCategoryDropdownOpen ? 'rotate-180 text-[#EA580C]' : ''}`} />
               </div>
 
-              {/* Searchable Dropdown Menu with "Generate 3D from Photo" button for all mock items */}
+              {/* Searchable Dropdown Menu */}
               {isCategoryDropdownOpen && (
                 <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-[#1A120E] border border-[#EA580C]/60 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl">
                   <div className="p-2.5 bg-[#120B08] border-b border-[#2A1E17] flex items-center justify-between text-[10px] text-slate-400">
                     <span>Matching Items ({filteredProducts.length})</span>
-                    <span className="text-[#EA580C] font-mono">Click item to view 3D →</span>
+                    <span className="text-[#EA580C] font-mono">Click item to select →</span>
                   </div>
 
                   <div className="max-h-56 overflow-y-auto p-2 space-y-1 custom-scrollbar">
@@ -550,7 +597,6 @@ export const CustomerCampaignLauncher: React.FC = () => {
                           setCustomItemName('');
                           setCategorySearchQuery('');
                           setIsCategoryDropdownOpen(false);
-                          // Auto set default sizes in active unit
                           setDisplayLength(convertFromFeet(prod.defaultLength, dimensionUnit));
                           setDisplayWidth(convertFromFeet(prod.defaultWidth, dimensionUnit));
                           setDisplayHeight(convertFromFeet(prod.defaultHeight, dimensionUnit));
@@ -572,20 +618,18 @@ export const CustomerCampaignLauncher: React.FC = () => {
               )}
             </div>
 
-            {/* 2️⃣ MIDDLE: CUSTOM DIMENSION EDITOR WITH UNIT CONVERTER */}
-            <div className="space-y-3 bg-[#120B08] p-4 rounded-2xl border border-[#2A1E17]">
-
-              {/* Header & Unit Selector Row */}
+            {/* 2️⃣ CUSTOM DIMENSION EDITOR WITH UNIT CONVERTER */}
+            <div className="space-y-3 bg-[#1F1510] p-4 rounded-2xl border border-[#2A1E17]">
               <div className="flex items-center justify-between border-b border-[#2A1E17] pb-2.5">
                 <div className="flex items-center space-x-1.5">
                   <Ruler className="w-4 h-4 text-[#EA580C]" />
                   <label className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                    2️⃣ Custom Size & Unit Editor:
+                    2️⃣ Dimensions & Unit Converter:
                   </label>
                 </div>
 
                 {/* Unit Switcher Tabs */}
-                <div className="flex items-center bg-[#1F1510] p-1 rounded-xl border border-[#3E2E24]">
+                <div className="flex items-center bg-[#120B08] p-1 rounded-xl border border-[#3E2E24]">
                   {(['ft', 'in', 'cm', 'm'] as DimensionUnit[]).map((unit) => (
                     <button
                       key={unit}
@@ -593,7 +637,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
                       onClick={() => handleUnitChange(unit)}
                       className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold uppercase transition-all ${dimensionUnit === unit
                           ? "bg-[#EA580C] text-white shadow-md glow-orange"
-                          : "text-slate-400 hover:text-white hover:bg-[#120B08]"
+                          : "text-slate-400 hover:text-white hover:bg-[#1F1510]"
                         }`}
                     >
                       {unit}
@@ -609,7 +653,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => applyPresetSize(0.8)}
-                    className="flex-1 py-1 rounded-lg bg-[#1F1510] hover:bg-[#261B15] text-slate-300 border border-[#2A1E17] text-[11px] font-semibold transition-colors text-center"
+                    className="flex-1 py-1 rounded-lg bg-[#120B08] hover:bg-[#261B15] text-slate-300 border border-[#2A1E17] text-[11px] font-semibold transition-colors text-center"
                   >
                     Compact (0.8x)
                   </button>
@@ -623,15 +667,15 @@ export const CustomerCampaignLauncher: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => applyPresetSize(1.3)}
-                    className="flex-1 py-1 rounded-lg bg-[#1F1510] hover:bg-[#261B15] text-slate-300 border border-[#2A1E17] text-[11px] font-semibold transition-colors text-center"
+                    className="flex-1 py-1 rounded-lg bg-[#120B08] hover:bg-[#261B15] text-slate-300 border border-[#2A1E17] text-[11px] font-semibold transition-colors text-center"
                   >
                     Grand (1.3x)
                   </button>
                 </div>
               </div>
 
-              {/* Inputs for Length, Width, Height in Selected Unit */}
-              <div className="flex flex-col gap-3">
+              {/* Inputs for Length, Width, Height */}
+              <div className="grid grid-cols-3 gap-2.5">
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-[10px] text-slate-400 uppercase font-bold">Length ({dimensionUnit}):</label>
@@ -650,7 +694,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
                           setDisplayLength(1);
                         }
                       }}
-                      className="w-full bg-[#1F1510] border border-[#3E2E24] p-2 pr-8 rounded-xl text-white font-mono font-bold text-xs focus:outline-none focus:border-[#EA580C] shadow-inner"
+                      className="w-full bg-[#120B08] border border-[#3E2E24] p-2 pr-7 rounded-xl text-white font-mono font-bold text-xs focus:outline-none focus:border-[#EA580C] shadow-inner"
                     />
                     <span className="absolute right-2 text-[10px] font-mono text-slate-400 font-bold uppercase pointer-events-none">{dimensionUnit}</span>
                   </div>
@@ -674,7 +718,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
                           setDisplayWidth(1);
                         }
                       }}
-                      className="w-full bg-[#1F1510] border border-[#3E2E24] p-2 pr-8 rounded-xl text-white font-mono font-bold text-xs focus:outline-none focus:border-[#EA580C] shadow-inner"
+                      className="w-full bg-[#120B08] border border-[#3E2E24] p-2 pr-7 rounded-xl text-white font-mono font-bold text-xs focus:outline-none focus:border-[#EA580C] shadow-inner"
                     />
                     <span className="absolute right-2 text-[10px] font-mono text-slate-400 font-bold uppercase pointer-events-none">{dimensionUnit}</span>
                   </div>
@@ -698,50 +742,155 @@ export const CustomerCampaignLauncher: React.FC = () => {
                           setDisplayHeight(1);
                         }
                       }}
-                      className="w-full bg-[#1F1510] border border-[#3E2E24] p-2 pr-8 rounded-xl text-white font-mono font-bold text-xs focus:outline-none focus:border-[#EA580C] shadow-inner"
+                      className="w-full bg-[#120B08] border border-[#3E2E24] p-2 pr-7 rounded-xl text-white font-mono font-bold text-xs focus:outline-none focus:border-[#EA580C] shadow-inner"
                     />
                     <span className="absolute right-2 text-[10px] font-mono text-slate-400 font-bold uppercase pointer-events-none">{dimensionUnit}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Dynamic Calculated Area (1st) & Volume (2nd) Banner */}
-              <div className="p-3 rounded-xl bg-[#1A120E] border border-[#EA580C] space-y-1.5">
-                <div className="flex items-center justify-between text-xs text-slate-300">
-                  <div className="flex items-center space-x-1.5">
-                    <Calculator className="w-3.5 h-3.5 text-[#EA580C]" />
-                    <span className="font-semibold text-white text-[11px]">Calculated Size ({dimensionUnit}):</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    ({parsedLength} × {parsedWidth} × {parsedHeight})
+              {/* Dynamic Calculated Area & Volume */}
+              <div className="p-3 rounded-xl bg-[#120B08] border border-[#EA580C]/50 flex items-center justify-between text-xs">
+                <div className="text-xs font-bold text-emerald-400 font-mono">
+                  Area: {formatAreaDisplay(surfaceAreaInSelectedUnit)} {getAreaUnitLabel(dimensionUnit)}
+                </div>
+                <div className="text-xs font-bold text-[#EAB308] font-mono">
+                  Vol: {formatVolumeDisplay(volumeInSelectedUnit)} {getVolumeUnitLabel(dimensionUnit)}
+                </div>
+              </div>
+            </div>
+
+            {/* 3️⃣ PRIMARY STRUCTURAL MATERIAL */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">
+                  3️⃣ Primary Structural Material:
+                </label>
+                <span className="text-[10px] text-[#EAB308] font-mono font-bold bg-[#1F1510] px-2.5 py-0.5 rounded border border-[#EAB308]/30">
+                  Rate in {dimensionUnit.toUpperCase()}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2.5">
+                {PRIMARY_MATERIALS.map((m) => {
+                  const isSelected = primaryMaterial.id === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setPrimaryMaterial(m.name)}
+                      className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 ${isSelected
+                          ? "border-[#EA580C] bg-[#EA580C]/15 text-white shadow-md glow-orange ring-1 ring-[#EA580C]/50"
+                          : "border-[#2A1E17] bg-[#1F1510] text-slate-300 hover:border-[#3E2E24] hover:bg-[#251A14]"
+                        }`}
+                    >
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected ? "border-[#EA580C] bg-[#EA580C]" : "border-[#3E2E24] bg-[#120B08]"
+                        }`}>
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-white text-xs sm:text-sm block">{m.name}</span>
+                          <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{m.description}</p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-mono text-[#EAB308] bg-[#120B08] px-2.5 py-1 rounded-lg border border-[#EAB308]/30 font-bold shrink-0">
+                        {getConvertedMaterialRateText(m.ratePerCubicFt, dimensionUnit)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4️⃣ SURFACE FINISH & POLISH */}
+            <div className="space-y-2.5">
+              <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">
+                4️⃣ Surface Finish & Polish:
+              </label>
+              <div className="flex flex-col gap-2.5">
+                {SURFACE_FINISHES.map((f) => {
+                  const isSelected = selectedFinish.id === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setFinish(f.name)}
+                      className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 ${isSelected
+                          ? "border-[#EA580C] bg-[#EA580C]/15 text-white shadow-md glow-orange ring-1 ring-[#EA580C]/50"
+                          : "border-[#2A1E17] bg-[#1F1510] text-slate-300 hover:border-[#3E2E24] hover:bg-[#251A14]"
+                        }`}
+                    >
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected ? "border-[#EA580C] bg-[#EA580C]" : "border-[#3E2E24] bg-[#120B08]"
+                        }`}>
+                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-white text-xs sm:text-sm block">{f.name}</span>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-mono text-emerald-400 bg-[#120B08] px-2.5 py-1 rounded-lg border border-emerald-800 font-bold shrink-0">
+                        {getConvertedFinishRateText(f.costPerSqFt, dimensionUnit)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 5️⃣ SUBCATEGORIES & MATERIAL BLUEPRINT (IF AVAILABLE) */}
+            {selectedProduct.subcategories && selectedProduct.subcategories.length > 0 && (
+              <div className="space-y-3 bg-[#1F1510] p-4 rounded-xl border border-[#EA580C]/40">
+                <div className="flex items-center justify-between border-b border-[#2A1E17] pb-2">
+                  <span className="text-xs font-bold text-[#EA580C] uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#EA580C]" />
+                    <span>{selectedProduct.name} Subcategories Blueprint</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-[#EAB308]">
+                    {selectedProduct.subcategories.length} Specs
                   </span>
                 </div>
 
-                <div className="pt-1 border-t border-[#2A1E17] space-y-1">
-                  {/* 1. Area First (Emerald Green) */}
-                  <div className="text-xs font-extrabold text-emerald-400 font-mono flex items-center justify-between">
-                    <span>Area:</span>
-                    <span>{formatAreaDisplay(surfaceAreaInSelectedUnit)} {getAreaUnitLabel(dimensionUnit)}</span>
-                  </div>
-                  {/* 2. Volume Second (Amber Yellow) */}
-                  <div className="text-xs font-extrabold text-[#EAB308] font-mono glow-orange flex items-center justify-between">
-                    <span>Vol:</span>
-                    <span>{formatVolumeDisplay(volumeInSelectedUnit)} {getVolumeUnitLabel(dimensionUnit)}</span>
-                  </div>
+                <div className="flex flex-col gap-2.5">
+                  {selectedProduct.subcategories.map((subcat) => (
+                    <div key={subcat.id} className="bg-[#120B08] p-2.5 rounded-lg border border-[#2A1E17] space-y-1.5">
+                      <span className="text-[11px] font-bold text-amber-300 block font-mono">
+                        📐 {subcat.name}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {subcat.materials.map((mat) => {
+                          const isSelectedMat = primaryMaterial.name.toLowerCase().includes(mat.toLowerCase()) || aiDescription.toLowerCase().includes(mat.toLowerCase());
+                          return (
+                            <button
+                              key={mat}
+                              type="button"
+                              onClick={() => handleToggleChip(mat, mat.toLowerCase().slice(0, 5))}
+                              className={`text-[10px] font-medium px-2 py-0.5 rounded-md border transition-all ${isSelectedMat
+                                  ? "bg-[#EA580C] text-white border-[#EA580C] font-bold shadow"
+                                  : "bg-[#1F1510] text-slate-300 border-[#2A1E17] hover:border-[#EA580C] hover:text-white"
+                                }`}
+                            >
+                              {mat}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
+            )}
 
-            </div>
-
-            <div className="border-t border-[#2A1E17]"></div>
-
-            {/* 3️⃣ BOTTOM: REFERENCE SKETCH / PHOTO UPLOAD WITH AI 3D GENERATOR */}
+            {/* 6️⃣ REFERENCE SKETCH / PHOTO UPLOAD WITH AI 3D GENERATOR */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-1.5">
                   <Camera className="w-4 h-4 text-[#EA580C]" />
                   <label className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                    3️⃣ Reference Sketch / Photo:
+                    5️⃣ Reference Sketch / Photo:
                   </label>
                 </div>
                 <span className="text-[9px] text-slate-400 font-mono">JPG, PNG, CAD</span>
@@ -785,19 +934,6 @@ export const CustomerCampaignLauncher: React.FC = () => {
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-
-                  {/* ⚡ Launch Campaign Button (Reference Photo) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const el = document.getElementById("broadcast-btn");
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-[#EA580C] hover:bg-[#F97316] text-white text-xs font-bold transition-all shadow-md glow-orange flex items-center justify-center space-x-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>🚀 Proceed to Launch Campaign</span>
-                  </button>
                 </div>
               ) : (
                 <div
@@ -808,98 +944,31 @@ export const CustomerCampaignLauncher: React.FC = () => {
                     <Upload className="w-4 h-4" />
                   </div>
                   <p className="text-xs font-bold text-white">Click or Drag & Drop Sketch / Photo</p>
-                  <p className="text-[9px] text-slate-400">Upload any photo to generate live 3D model automatically!</p>
+                  <p className="text-[9px] text-slate-400">Upload photo to synchronize live 3D model automatically!</p>
                 </div>
               )}
             </div>
-
-          
-{/* 4️⃣ SUBCATEGORIES & MATERIAL BLUEPRINT FOR SELECTED ITEM */}
-          {selectedProduct.subcategories && selectedProduct.subcategories.length > 0 && (
-            <div className="space-y-4 bg-[#120B08] p-4 sm:p-5 rounded-2xl border border-[#EA580C]/40">
-              <div className="flex items-center justify-between border-b border-[#2A1E17] pb-2.5">
-                <span className="text-xs font-extrabold text-[#EA580C] uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-[#EA580C]" />
-                  <span>{selectedProduct.name} Subcategories & Materials Blueprint</span>
-                </span>
-                <span className="text-[10px] font-mono text-[#EAB308] bg-[#EA580C]/10 px-2 py-0.5 rounded border border-[#EA580C]/30 font-bold">
-                  {selectedProduct.subcategories.length} Subcategory Specs
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-3.5">
-                {selectedProduct.subcategories.map((subcat) => (
-                  <div key={subcat.id} className="bg-[#1F1510] p-3.5 rounded-xl border border-[#2A1E17] space-y-2">
-                    <span className="text-xs font-bold text-amber-300 block border-b border-[#2A1E17] pb-1 font-mono">
-                      📐 {subcat.name}
-                    </span>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {subcat.materials.map((mat) => {
-                        const isSelectedMat = primaryMaterial.name.toLowerCase().includes(mat.toLowerCase()) || aiDescription.toLowerCase().includes(mat.toLowerCase());
-                        return (
-                          <button
-                            key={mat}
-                            type="button"
-                            onClick={() => handleToggleChip(mat, mat.toLowerCase().slice(0, 5))}
-                            className={`text-[10px] font-medium px-2.5 py-1 rounded-lg border transition-all ${isSelectedMat
-                                ? "bg-[#EA580C] text-white border-[#EA580C] font-bold shadow"
-                                : "bg-[#120B08] text-slate-300 border-[#2A1E17] hover:border-[#EA580C] hover:text-white"
-                              }`}
-                            title={`Click to add/remove "${mat}" in AI specification`}
-                          >
-                            {mat}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 4️⃣ PRIMARY STRUCTURAL MATERIAL */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">
-                4️⃣ Primary Structural Material:
-              </label>
-              <span className="text-[10px] text-[#EAB308] font-mono font-bold bg-[#120B08] px-2.5 py-0.5 rounded border border-[#EAB308]/30">
-                Rates Synced to {dimensionUnit.toUpperCase()}
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {PRIMARY_MATERIALS.map((m) => {
-                const isSelected = primaryMaterial.id === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setPrimaryMaterial(m.name)}
-                    className={`text-left p-3.5 rounded-2xl border text-xs transition-all duration-300 ${isSelected
-                        ? "border-[#EA580C] bg-[#EA580C]/20 text-white font-semibold shadow-lg glow-orange"
-                        : "border-[#2A1E17] bg-[#120B08] text-slate-400 hover:border-[#3E2E24] hover:text-white"
-                      }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-white text-sm">{m.name}</span>
-                      <span className="text-[11px] font-mono text-[#EAB308] bg-[#120B08] px-2.5 py-1 rounded-md border border-[#EAB308]/40 font-bold">
-                        {getConvertedMaterialRateText(m.ratePerCubicFt, dimensionUnit)}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-300 mt-1.5 line-clamp-1">{m.description}</p>
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
-              </div>
-            </details>
+          {/* STAGE 1 BOTTOM ACTION BAR */}
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setActiveStage(2)}
+              className="w-full py-4 rounded-2xl bg-[#EA580C] hover:bg-[#F97316] text-white text-xs sm:text-sm font-bold transition-all shadow-xl glow-orange flex items-center justify-center space-x-2 group"
+            >
+              <span>Continue to 3D Studio & Add-ons</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
           </div>
-        {/* PANEL 1: 3D ITEM INSPECTOR CANVAS (CENTER - 4 COLS) */}
-        <div className="lg:col-span-4 space-y-4">
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🧊 STAGE 2: 3D INTERACTIVE STUDIO, INLAYS & FEATURE INJECTOR              */}
+      {/* ========================================================================= */}
+      {activeStage === 2 && (
+        <div className="space-y-6 animate-fadeIn">
 
           {/* Live Image-to-3D AI Generation Notification Banner */}
           {image3DNotice && (
@@ -909,59 +978,198 @@ export const CustomerCampaignLauncher: React.FC = () => {
             </div>
           )}
 
-          <Embedded3DCanvas
-            categoryName={customItemName || selectedProduct.name}
-            materialName={primaryMaterial.name}
-            materialColorHex={woodToneColorHex}
-            roughness={primaryMaterial.roughness ?? 0.4}
-            metalness={primaryMaterial.metalness ?? 0.1}
-            lengthFt={lengthInFt}
-            widthFt={widthInFt}
-            heightFt={heightInFt}
-            accentIds={selectedAccents}
-            finishId={selectedFinish.id}
-            hasDrawers={hasDrawers}
-            drawerCount={drawerCount}
-            hasCarvedLegs={hasCarvedLegs}
-            hasBrassPillars={hasBrassPillars}
-            hasMarbleTop={hasMarbleTop}
-            marbleColor={marbleColor}
-            hasBottomShelf={hasBottomShelf}
-            hasGlassTop={hasGlassTop}
-            hasBrassInlays={hasBrassInlays}
-            hasApronCarving={hasApronCarving}
-            aiPromptText={aiDescription}
-          />
-
-          {/* Material & Feature Tags Badge Row */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-slate-300">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="font-mono px-2.5 py-1 rounded-md bg-[#120B08] text-amber-400 border border-[#2A1E17] font-semibold flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: woodToneColorHex }}></span>
-                <span>Mat: {hasBrassPillars ? 'Moradabad Cast Brass' : (hasMarbleTop ? 'Makrana Marble' : activeMaterialSpec.badgeMatName)}</span>
-              </span>
-                <span className="font-mono px-2.5 py-1 rounded-md bg-[#120B08] text-emerald-400 border border-[#2A1E17] font-semibold">
-                Polish: {lowerAiText.includes('beeswax') ? 'Organic Beeswax & Linseed Oil' : activeMaterialSpec.badgePolishName}
+          {/* 3D ITEM INSPECTOR CANVAS CARD */}
+          <div className="bg-[#120B08] p-4 sm:p-6 rounded-2xl border border-[#3E2E24] shadow-inner space-y-4">
+            <div className="flex items-center justify-between border-b border-[#2A1E17] pb-3">
+              <div className="flex items-center space-x-2">
+                <Box className="w-4 h-4 text-[#EA580C]" />
+                <h4 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
+                  3D Viewport: {customItemName || selectedProduct.name}
+                </h4>
+              </div>
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2.5 py-0.5 rounded-full border border-emerald-800 font-bold flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Interactive 3D</span>
               </span>
             </div>
-            <span className="font-mono px-2.5 py-1 rounded-md bg-[#120B08] text-[#EA580C] border border-[#2A1E17] font-semibold">
-              Features: {[hasDrawers, hasCarvedLegs, hasBrassPillars, hasGlassTop, hasMarbleTop, hasBottomShelf, hasBrassInlays].filter(Boolean).length} Active
-            </span>
+
+            <Embedded3DCanvas
+              categoryName={customItemName || selectedProduct.name}
+              materialName={primaryMaterial.name}
+              materialColorHex={woodToneColorHex}
+              roughness={primaryMaterial.roughness ?? 0.4}
+              metalness={primaryMaterial.metalness ?? 0.1}
+              lengthFt={lengthInFt}
+              widthFt={widthInFt}
+              heightFt={heightInFt}
+              accentIds={selectedAccents}
+              finishId={selectedFinish.id}
+              hasDrawers={hasDrawers}
+              drawerCount={drawerCount}
+              hasCarvedLegs={hasCarvedLegs}
+              hasBrassPillars={hasBrassPillars}
+              hasMarbleTop={hasMarbleTop}
+              marbleColor={marbleColor}
+              hasBottomShelf={hasBottomShelf}
+              hasGlassTop={hasGlassTop}
+              hasBrassInlays={hasBrassInlays}
+              hasApronCarving={hasApronCarving}
+              aiPromptText={aiDescription}
+            />
+
+            {/* Material & Feature Tags Badge Row */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-slate-300">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-mono px-2.5 py-1 rounded-md bg-[#1F1510] text-amber-400 border border-[#2A1E17] font-semibold flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: woodToneColorHex }}></span>
+                  <span>Mat: {hasBrassPillars ? 'Moradabad Cast Brass' : (hasMarbleTop ? 'Makrana Marble' : activeMaterialSpec.badgeMatName)}</span>
+                </span>
+                <span className="font-mono px-2.5 py-1 rounded-md bg-[#1F1510] text-emerald-400 border border-[#2A1E17] font-semibold">
+                  Polish: {lowerAiText.includes('beeswax') ? 'Organic Beeswax & Linseed Oil' : activeMaterialSpec.badgePolishName}
+                </span>
+              </div>
+              <span className="font-mono px-2.5 py-1 rounded-md bg-[#1F1510] text-[#EA580C] border border-[#2A1E17] font-semibold">
+                Features: {[hasDrawers, hasCarvedLegs, hasBrassPillars, hasGlassTop, hasMarbleTop, hasBottomShelf, hasBrassInlays].filter(Boolean).length} Active
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIs3DFullscreenOpen(true)}
+              className="w-full py-2.5 rounded-xl bg-[#EA580C] hover:bg-[#F97316] text-white text-xs font-bold transition-all shadow-md glow-orange flex items-center justify-center space-x-2"
+            >
+              <Eye className="w-4 h-4" />
+              <span>Launch Fullscreen 3D Viewport Inspector</span>
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIs3DFullscreenOpen(true)}
-            className="w-full py-3 rounded-xl bg-[#EA580C] hover:bg-[#F97316] text-white text-xs font-bold transition-all shadow-lg glow-orange flex items-center justify-center space-x-2"
-          >
-            <Eye className="w-4 h-4" />
-            <span>Launch Fullscreen 3D Viewport Inspector</span>
-          </button>
+          {/* AI PROMPT & FEATURE INJECTOR */}
+          <div className="bg-[#120B08] p-4 sm:p-6 rounded-2xl border border-[#3E2E24] shadow-inner space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                <Wand2 className="w-4 h-4 text-[#EA580C]" />
+                <span>AI Prompt & Feature Injector</span>
+              </span>
+              <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                Live Auto-Parse
+              </span>
+            </div>
 
-          {/* 5️⃣ SECONDARY ACCENT INLAYS (MULTI-SELECT) */}
-          <div className="space-y-2.5">
+            {/* AI Textarea */}
+            <div className="space-y-1.5">
+              <textarea
+                rows={3}
+                value={aiDescription}
+                onChange={(e) => setAiDescription(e.target.value)}
+                placeholder="Type custom specs or click Quick Chips below to inject materials & features..."
+                className="w-full bg-[#1F1510] border border-[#3E2E24] focus:border-[#EA580C] p-3 rounded-xl text-white text-xs font-medium focus:outline-none resize-none shadow-inner"
+              ></textarea>
+              <span className="text-[10px] text-slate-400 block font-mono">
+                Type words like "drawers", "carved legs", "glass top", "marble", or click materials below.
+              </span>
+            </div>
+
+            {/* Dynamic Item-Specific Subcategory Quick Chips */}
+            <div className="space-y-2 pt-2 border-t border-[#2A1E17]">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-[#EA580C] font-extrabold uppercase tracking-wider block">
+                  Quick Chips ({selectedProduct.name} Material Add-ons):
+                </span>
+                <span className="text-[9px] text-amber-400 font-mono font-bold">
+                  click to Toggle 3D Feature
+                </span>
+              </div>
+
+              {activeSubcategories.length > 0 ? (
+                <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                  {activeSubcategories.map((subcat) => (
+                    <div key={subcat.id} className="space-y-1 bg-[#1F1510] p-2.5 rounded-xl border border-[#2A1E17]">
+                      <span className="text-[10px] text-amber-300 font-mono font-bold block border-b border-[#2A1E17]/60 pb-1">
+                        📌 {subcat.name}:
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        {subcat.materials.map((mat) => {
+                          const isActive = lowerAiText.includes(mat.toLowerCase()) || lowerAiText.includes(mat.toLowerCase().slice(0, Math.min(6, mat.length)));
+                          return (
+                            <button
+                              key={mat}
+                              type="button"
+                              onClick={() => handleToggleChip(mat, mat.toLowerCase())}
+                              className={`text-[10px] px-2.5 py-1 rounded-lg transition-all border font-medium flex items-center gap-1.5 ${isActive
+                                  ? "bg-[#EA580C]/25 border-[#EA580C] text-amber-300 font-bold shadow glow-orange scale-105"
+                                  : "bg-[#120B08] hover:bg-[#261B15] text-slate-300 border-[#2A1E17] hover:border-[#EA580C]/50"
+                                }`}
+                            >
+                              <span>{isActive ? '✓' : '+'}</span>
+                              <span>{mat}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {quickChipsList.map((chip) => {
+                    const isActive = lowerAiText.includes(chip.matchKey);
+                    return (
+                      <button
+                        key={chip.label}
+                        type="button"
+                        onClick={() => handleToggleChip(chip.label, chip.matchKey)}
+                        className={`text-[10px] px-2.5 py-1 rounded-lg transition-all border font-medium flex items-center gap-1.5 ${isActive
+                            ? "bg-[#EA580C]/20 border-[#EA580C] text-amber-300 font-bold shadow glow-orange scale-105"
+                            : "bg-[#1F1510] hover:bg-[#261B15] text-slate-300 border-[#2A1E17] hover:border-[#EA580C]/50"
+                          }`}
+                      >
+                        <span>{isActive ? '✓' : '+'}</span>
+                        <span>{chip.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Active Materials Breakdown in 3D Model */}
+            <div className="bg-[#1F1510] p-3.5 rounded-xl border border-[#EA580C]/40 space-y-2.5 shadow-inner mt-3">
+              <div className="flex items-center justify-between pb-1 border-b border-[#2A1E17]">
+                <div className="flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-[#EA580C] animate-pulse"></span>
+                  <span className="text-[11px] text-[#EA580C] font-extrabold uppercase tracking-wider block">
+                    ACTIVE MATERIALS & ADD-ONS:
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {breakdown.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-[#120B08] p-2 rounded-lg border border-[#2A1E17]">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-white font-semibold">{item.materialName}</span>
+                      <span className="text-[10px] text-slate-400">{item.role} • {item.quantity} {item.unit}</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-xs text-[#EAB308] font-mono">₹{Math.round(item.lineAvg).toLocaleString('en-IN')}</span>
+                      <button
+                        onClick={() => removeSlot(item.role, selectedSlots.find(s => s.role === item.role)?.rateKey || "")}
+                        className="w-6 h-6 rounded-full bg-red-950/40 text-red-400 flex items-center justify-center hover:bg-red-900/60 hover:text-red-300 transition-colors border border-red-900/30"
+                        title="Remove Material"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* SECONDARY ACCENT INLAYS (MULTI-SELECT) */}
+          <div className="bg-[#120B08] p-4 sm:p-6 rounded-2xl border border-[#3E2E24] shadow-inner space-y-3">
             <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">
-              5️⃣ Secondary Accent Inlays (Select Multiple):
+              Secondary Accent Inlays (Select Multiple):
             </label>
             <div className="space-y-2">
               {SECONDARY_ACCENTS.map((acc) => {
@@ -969,9 +1177,9 @@ export const CustomerCampaignLauncher: React.FC = () => {
                 return (
                   <label
                     key={acc.id}
-                    className={`flex items-center justify-between p-3.5 rounded-2xl text-xs cursor-pointer border transition-all ${isSelected
+                    className={`flex items-center justify-between p-3 rounded-xl text-xs cursor-pointer border transition-all ${isSelected
                         ? "bg-[#EA580C]/20 border-[#EA580C] text-white font-semibold shadow-md"
-                        : "bg-[#120B08] border-[#2A1E17] text-slate-400 hover:border-[#3E2E24] hover:text-slate-200"
+                        : "bg-[#1F1510] border-[#2A1E17] text-slate-400 hover:border-[#3E2E24] hover:text-slate-200"
                       }`}
                   >
                     <div className="flex items-center space-x-3">
@@ -992,8 +1200,113 @@ export const CustomerCampaignLauncher: React.FC = () => {
             </div>
           </div>
 
-          {/* 📊 ESTIMATED MARKET PRICE RANGE CALCULATOR PANEL */}
-          <div className="bg-[#1A120E] border-2 border-[#EA580C] p-6 sm:p-7 rounded-3xl space-y-5 shadow-2xl mt-6">
+          {/* LIVE TECHNICAL SPEC SHEET PANEL */}
+          <div className="p-4 rounded-2xl bg-[#120B08] border border-[#EA580C]/50 space-y-3">
+            <div className="flex items-center justify-between text-[#EA580C]">
+              <div className="flex items-center space-x-1.5">
+                <FileText className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-bold uppercase tracking-wider">Live Technical Spec Sheet</span>
+              </div>
+              <span className="text-[9px] text-emerald-400 font-mono font-bold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                Auto-Synced
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+              {/* JOINERY */}
+              <div className="bg-[#1F1510] p-2.5 rounded-lg border border-[#2A1E17]">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">JOINERY</span>
+                <p className="text-[11px] text-white font-semibold">
+                  {hasCarvedLegs ? 'Rajasthani Hand-Carved Mortise & Tenon' : activeMaterialSpec.joineryConstruction || 'Traditional Mortise & Tenon'}
+                </p>
+              </div>
+              {/* TIMBER QUALITY */}
+              <div className="bg-[#1F1510] p-2.5 rounded-lg border border-[#2A1E17]">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">TIMBER QUALITY</span>
+                <p className="text-[11px] text-emerald-400 font-semibold">
+                  Kiln-Dried Timber Seasoned to &lt;10% Moisture
+                </p>
+              </div>
+              {/* SURFACE POLISH */}
+              <div className="bg-[#1F1510] p-2.5 rounded-lg border border-[#2A1E17]">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">SURFACE POLISH</span>
+                <p className="text-[11px] text-white font-semibold">
+                  {lowerAiText.includes('beeswax') ? '3 Hand-Rubbed Beeswax Polish Layers' : activeMaterialSpec.badgePolishName}
+                </p>
+              </div>
+              {/* INLAY DETAIL */}
+              <div className="bg-[#1F1510] p-2.5 rounded-lg border border-[#2A1E17]">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">INLAY DETAIL</span>
+                <p className="text-[11px] text-[#EAB308] font-semibold">
+                  {hasBrassInlays ? 'High-Density 18 Gauge Solid Brass Wire Inlay' : (hasMarbleTop ? 'Makrana Marble Inlay' : 'Standard Finish')}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAiEnhance}
+              disabled={isAiEnhancing}
+              className="w-full py-2 rounded-xl bg-[#1F1510] hover:bg-[#261B15] text-[#EA580C] hover:text-white text-xs font-bold border border-[#EA580C]/40 transition-all flex items-center justify-center space-x-2 mt-2"
+            >
+              <Wand2 className={`w-3.5 h-3.5 ${isAiEnhancing ? 'animate-spin' : ''}`} />
+              <span>{isAiEnhancing ? 'Generating Technical Spec Sheet...' : '✨ AI Enhance & Force Re-Sync'}</span>
+            </button>
+          </div>
+
+          {/* STAGE 2 BOTTOM NAVIGATION BAR */}
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setActiveStage(1)}
+              className="py-3.5 rounded-2xl bg-[#1F1510] hover:bg-[#2A1E17] text-slate-300 hover:text-white text-xs font-bold border border-[#3E2E24] transition-all flex items-center justify-center space-x-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Specs</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveStage(3)}
+              className="py-3.5 rounded-2xl bg-[#EA580C] hover:bg-[#F97316] text-white text-xs font-bold transition-all shadow-xl glow-orange flex items-center justify-center space-x-2 group"
+            >
+              <span>Review Price & Launch</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📊 STAGE 3: ESTIMATED MARKET PRICE, BREAKDOWN & BROADCAST                 */}
+      {/* ========================================================================= */}
+      {activeStage === 3 && (
+        <div className="space-y-6 animate-fadeIn">
+
+          {/* Configured Item Summary Card */}
+          <div className="bg-[#120B08] p-4 sm:p-5 rounded-2xl border border-[#3E2E24] flex items-center justify-between shadow-inner">
+            <div className="space-y-1">
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Configured Item</span>
+              <h4 className="text-sm sm:text-base font-extrabold text-white">{customItemName || selectedProduct.name}</h4>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300 font-mono">
+                <span className="text-amber-400 font-semibold">{parsedLength}×{parsedWidth}×{parsedHeight} {dimensionUnit}</span>
+                <span>•</span>
+                <span className="text-emerald-400 font-semibold">{primaryMaterial.name}</span>
+                <span>•</span>
+                <span className="text-slate-400">{selectedFinish.name}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveStage(2)}
+              className="px-3 py-1.5 rounded-xl bg-[#1F1510] hover:bg-[#2A1E17] text-[#EA580C] hover:text-white text-xs font-bold border border-[#EA580C]/40 transition-colors shrink-0"
+            >
+              Edit 3D Model
+            </button>
+          </div>
+
+          {/* ESTIMATED MARKET PRICE RANGE CALCULATOR PANEL */}
+          <div className="bg-[#1A120E] border-2 border-[#EA580C] p-5 sm:p-7 rounded-3xl space-y-5 shadow-2xl">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                 Estimated Market Price Range
@@ -1011,7 +1324,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
               Calculated Area Average: <span className="text-white font-extrabold font-mono text-base">₹{Math.round(calculatedAverage).toLocaleString("en-IN")}.00</span>
             </div>
             
-            {/* ⚡ ACTIVE MATERIALS COST BREAKDOWN */}
+            {/* ACTIVE MATERIALS COST BREAKDOWN */}
             <div className="mt-6 pt-5 border-t border-[#3E2E24] space-y-3">
               <div className="flex items-center space-x-2 mb-2">
                 <span className="w-2 h-2 rounded-full bg-[#EA580C] animate-pulse"></span>
@@ -1020,7 +1333,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
                 </span>
               </div>
               
-              <div className="space-y-2.5 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+              <div className="space-y-2.5 max-h-56 overflow-y-auto custom-scrollbar pr-2">
                 {breakdown.map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between bg-[#120B08] p-2.5 rounded-xl border border-[#2A1E17] hover:border-[#EA580C]/50 transition-colors">
                     <div className="flex flex-col">
@@ -1045,8 +1358,9 @@ export const CustomerCampaignLauncher: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-col gap-4 mt-4 pt-4 border-t border-[#3E2E24]">
-              <div>
+            {/* Craftsmanship Grade & Locality Controls */}
+            <div className="flex flex-col sm:flex-row gap-4 mt-4 pt-4 border-t border-[#3E2E24]">
+              <div className="flex-1">
                 <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider mb-1.5">Craftsmanship Grade:</label>
                 <select className="w-full bg-[#120B08] border border-[#3E2E24] text-white font-semibold rounded-2xl p-3 text-xs" value={selectedGrade.id} onChange={(e) => setSelectedGrade(CRAFTSMANSHIP_GRADES.find((g) => g.id === e.target.value) || CRAFTSMANSHIP_GRADES[1])}>
                   {CRAFTSMANSHIP_GRADES.map((g) => (
@@ -1054,7 +1368,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="flex-1">
                 <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider mb-1.5">Target Delivery Locality:</label>
                 <select className="w-full bg-[#120B08] border border-[#3E2E24] text-white font-semibold rounded-2xl p-3 text-xs" value={selectedLocality.pincode} onChange={(e) => setSelectedLocality(LOCALITIES.find((l) => l.pincode === e.target.value) || LOCALITIES[0])}>
                   <optgroup label="Mumbai">
@@ -1076,7 +1390,7 @@ export const CustomerCampaignLauncher: React.FC = () => {
               </div>
             </div>
 
-            {/* ⚠️ DISCLAIMER ALERT BANNER */}
+            {/* DISCLAIMER ALERT BANNER */}
             <div className="bg-[#EA580C]/15 border border-[#EA580C]/50 p-4 rounded-2xl flex items-start gap-3.5 shadow-md">
               <AlertTriangle className="w-5 h-5 text-[#EA580C] shrink-0 mt-0.5" />
               <p className="text-[11px] text-slate-200 leading-relaxed">
@@ -1107,218 +1421,20 @@ export const CustomerCampaignLauncher: React.FC = () => {
               )}
             </button>
           </div>
-        </div>
 
-        {/* PANEL 2: ✨ AI PROMPT TEXT EDITOR & LIVE TECHNICAL SPEC SHEET (RIGHT - 4 COLS) */}
-        <div className="lg:col-span-4 space-y-4 bg-[#120B08] p-5 rounded-2xl border border-[#3E2E24] shadow-inner">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-              <Wand2 className="w-4 h-4 text-[#EA580C]" />
-              <span>AI Prompt & Feature Injector</span>
-            </span>
-            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
-              Live Auto-Parse
-            </span>
-          </div>
-
-          {/* AI Textarea */}
-          <div className="space-y-1.5">
-            <textarea
-              rows={3}
-              value={aiDescription}
-              onChange={(e) => setAiDescription(e.target.value)}
-              placeholder="Type custom specs or click Quick Chips below to inject materials & features..."
-              className="w-full bg-[#1F1510] border border-[#3E2E24] focus:border-[#EA580C] p-3 rounded-xl text-white text-xs font-medium focus:outline-none resize-none shadow-inner"
-            ></textarea>
-            <span className="text-[10px] text-slate-400 block font-mono">
-              Type words like "drawers", "carved legs", "glass top", "marble", or click materials below.
-            </span>
-          </div>
-
-          {/* 🏷️ DYNAMIC ITEM-SPECIFIC SUBCATEGORY QUICK CHIPS */}
-          <div className="space-y-2 pt-1 border-t border-[#2A1E17]">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] text-[#EA580C] font-extrabold uppercase tracking-wider block">
-                Quick Chips ({selectedProduct.name} Material Add-ons):
-              </span>
-              <span className="text-[9px] text-amber-400 font-mono font-bold">
-                click to Toggle 3D Feature
-              </span>
-            </div>
-
-            {activeSubcategories.length > 0 ? (
-              <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
-                {activeSubcategories.map((subcat) => (
-                  <div key={subcat.id} className="space-y-1 bg-[#1F1510] p-2.5 rounded-xl border border-[#2A1E17]">
-                    <span className="text-[10px] text-amber-300 font-mono font-bold block border-b border-[#2A1E17]/60 pb-1">
-                      📌 {subcat.name}:
-                    </span>
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      {subcat.materials.map((mat) => {
-                        const isActive = lowerAiText.includes(mat.toLowerCase()) || lowerAiText.includes(mat.toLowerCase().slice(0, Math.min(6, mat.length)));
-                        return (
-                          <button
-                            key={mat}
-                            type="button"
-                            onClick={() => handleToggleChip(mat, mat.toLowerCase())}
-                            className={`text-[10px] px-2.5 py-1 rounded-lg transition-all border font-medium flex items-center gap-1.5 ${isActive
-                                ? "bg-[#EA580C]/25 border-[#EA580C] text-amber-300 font-bold shadow glow-orange scale-105"
-                                : "bg-[#120B08] hover:bg-[#261B15] text-slate-300 border-[#2A1E17] hover:border-[#EA580C]/50"
-                              }`}
-                          >
-                            <span>{isActive ? '✓' : '+'}</span>
-                            <span>{mat}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {quickChipsList.map((chip) => {
-                  const isActive = lowerAiText.includes(chip.matchKey);
-                  return (
-                    <button
-                      key={chip.label}
-                      type="button"
-                      onClick={() => handleToggleChip(chip.label, chip.matchKey)}
-                      className={`text-[10px] px-2.5 py-1 rounded-lg transition-all border font-medium flex items-center gap-1.5 ${isActive
-                          ? "bg-[#EA580C]/20 border-[#EA580C] text-amber-300 font-bold shadow glow-orange scale-105"
-                          : "bg-[#1F1510] hover:bg-[#261B15] text-slate-300 border-[#2A1E17] hover:border-[#EA580C]/50"
-                        }`}
-                    >
-                      <span>{isActive ? '✓' : '+'}</span>
-                      <span>{chip.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* ⚡ 5️⃣ ACTIVE 3D MODEL ADD-ONS & FEATURES INJECTED */}
-          <div className="bg-[#120B08] p-3.5 rounded-xl border border-[#EA580C]/40 space-y-2.5 shadow-inner mt-3">
-            <div className="flex items-center justify-between pb-1 border-b border-[#2A1E17]">
-              <div className="flex items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-[#EA580C] animate-pulse"></span>
-                <span className="text-[11px] text-[#EA580C] font-extrabold uppercase tracking-wider block">
-                  ACTIVE MATERIALS & ADD-ONS:
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {breakdown.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between bg-[#1A120E] p-2 rounded-lg border border-[#2A1E17]">
-                  <div className="flex flex-col">
-                    <span className="text-xs text-white font-semibold">{item.materialName}</span>
-                    <span className="text-[10px] text-slate-400">{item.role} • {item.quantity} {item.unit}</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="text-xs text-[#EAB308] font-mono">₹{Math.round(item.lineAvg).toLocaleString('en-IN')}</span>
-                    <button
-                      onClick={() => removeSlot(item.role, selectedSlots.find(s => s.role === item.role)?.rateKey || "")}
-                      className="w-6 h-6 rounded-full bg-red-950/40 text-red-400 flex items-center justify-center hover:bg-red-900/60 hover:text-red-300 transition-colors border border-red-900/30"
-                      title="Remove Material"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* AI Enhance Specs Button */}
-          <button
-            type="button"
-            onClick={handleAiEnhance}
-            disabled={isAiEnhancing}
-            className="w-full py-2.5 rounded-xl bg-[#1F1510] hover:bg-[#261B15] text-[#EA580C] hover:text-white text-xs font-bold border border-[#EA580C]/40 transition-all flex items-center justify-center space-x-2"
-          >
-            <Wand2 className={`w-4 h-4 ${isAiEnhancing ? 'animate-spin' : ''}`} />
-            <span>{isAiEnhancing ? 'Generating Technical Spec Sheet...' : '✨ AI Enhance & Force Re-Sync'}</span>
-          </button>
-
-          {/* 📋 LIVE TECHNICAL SPEC SHEET PANEL */}
-          <div className="p-3.5 rounded-xl bg-[#1F1510] border border-[#EA580C]/50 space-y-3 animate-fadeIn">
-            <div className="flex items-center justify-between text-[#EA580C]">
-              <div className="flex items-center space-x-1.5">
-                <FileText className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-bold uppercase tracking-wider">Live Technical Spec Sheet</span>
-              </div>
-              <span className="text-[9px] text-emerald-400 font-mono font-bold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
-                Auto-Synced
-              </span>
-            </div>
-
-            {/* ⚡ 5️⃣ DYNAMIC 4-GRID SPECIFICATIONS */}
-            <div className="flex flex-col gap-2 mt-3">
-              {/* JOINERY */}
-              <div className="bg-[#120B08] p-2.5 rounded-lg border border-[#2A1E17] shadow-inner">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">JOINERY</span>
-                <p className="text-[11px] text-white font-semibold">
-                  {hasCarvedLegs ? 'Rajasthani Hand-Carved Mortise & Tenon' : activeMaterialSpec.joineryConstruction || 'Traditional Mortise & Tenon'}
-                </p>
-              </div>
-              {/* TIMBER QUALITY */}
-              <div className="bg-[#120B08] p-2.5 rounded-lg border border-[#2A1E17] shadow-inner">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">TIMBER QUALITY</span>
-                <p className="text-[11px] text-emerald-400 font-semibold">
-                  Kiln-Dried Timber Seasoned to &lt;10% Moisture
-                </p>
-              </div>
-              {/* SURFACE POLISH */}
-              <div className="bg-[#120B08] p-2.5 rounded-lg border border-[#2A1E17] shadow-inner">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">SURFACE POLISH</span>
-                <p className="text-[11px] text-white font-semibold">
-                  {lowerAiText.includes('beeswax') ? '3 Hand-Rubbed Beeswax Polish Layers' : activeMaterialSpec.badgePolishName}
-                </p>
-              </div>
-              {/* INLAY DETAIL */}
-              <div className="bg-[#120B08] p-2.5 rounded-lg border border-[#2A1E17] shadow-inner">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-0.5">INLAY DETAIL</span>
-                <p className="text-[11px] text-[#EAB308] font-semibold">
-                  {hasBrassInlays ? 'High-Density 18 Gauge Solid Brass Wire Inlay' : (hasMarbleTop ? 'Makrana Marble Inlay' : 'Standard Finish')}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          {/* 6️⃣ SURFACE FINISH / POLISH */}
-          <div className="space-y-2.5">
-            <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">
-              6️⃣ Surface Finish & Polish:
-            </label>
-            <div className="flex flex-col gap-2.5">
-              {SURFACE_FINISHES.map((f) => {
-                const isSelected = selectedFinish.id === f.id;
-                return (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => setFinish(f.name)}
-                    className={`p-3 rounded-2xl border text-left text-xs transition-all ${isSelected
-                        ? "border-[#EA580C] bg-[#EA580C]/20 text-white font-semibold shadow-md"
-                        : "border-[#2A1E17] bg-[#120B08] text-slate-400 hover:text-slate-200"
-                      }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-white">{f.name}</span>
-                      <span className="text-[11px] font-mono text-emerald-400 font-bold bg-[#120B08] px-2 py-0.5 rounded border border-emerald-800">
-                        {getConvertedFinishRateText(f.costPerSqFt, dimensionUnit)}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+          {/* STAGE 3 BOTTOM NAVIGATION BAR */}
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setActiveStage(2)}
+              className="w-full py-3.5 rounded-2xl bg-[#120B08] hover:bg-[#1F1510] text-slate-300 hover:text-white text-xs font-bold border border-[#3E2E24] transition-all flex items-center justify-center space-x-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to 3D Customizer</span>
+            </button>
           </div>
         </div>
-      </div>
-    </div>
+      )}
 
       {/* Fullscreen 3D Viewport Inspection Modal */}
       {is3DFullscreenOpen && (
