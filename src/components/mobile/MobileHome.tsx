@@ -105,7 +105,7 @@ export const MobileHome: React.FC<MobileHomeProps> = ({
           <div>
             <h2 className="text-base font-black text-white tracking-tight leading-snug">
               Bespoke Craftsmanship, <br />
-              <span className="text-[#EA580C]">Crafted Right in Nashik.</span>
+              <span className="text-[#EA580C]">Custom Made by Local Crafters.</span>
             </h2>
             <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
               Describe your dream furniture or decor. Our on-device AI designs the 3D model, estimates rates, and matches master crafters.
