@@ -131,7 +131,8 @@ export const KaragirStoreProvider: React.FC<{ children: React.ReactNode }> = ({ 
         craftSpecialty: profile.category || '',
         shopName: profile.shop_name,
         shopTagline: '',
-        yearsExperience: 0,
+        yearsExperience: profile.experience_years ?? 0,
+        speakingLanguage: profile.speaking_language || undefined,
         shopAvatar: '',
         shopBanner: '',
         categories: [],
@@ -215,7 +216,9 @@ export const KaragirStoreProvider: React.FC<{ children: React.ReactNode }> = ({ 
     await storageService.updateArtisanProfile(storeData.id, {
       shop_name: data.shopName,
       category: data.craftSpecialty,
-      address: data.location
+      address: data.location,
+      speaking_language: data.speakingLanguage,
+      experience_years: data.yearsExperience,
     });
   };
 

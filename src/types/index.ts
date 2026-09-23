@@ -194,7 +194,7 @@ export interface ProductItem {
   galleryImages: string[];
   description: string;
   materials: string[];
-  startingPrice: number;
+  startingPrice?: number | null;
 }
 
 export interface CategoryItem {
@@ -227,6 +227,7 @@ export interface KaragirStore {
   shopName: string;
   shopTagline: string;
   yearsExperience: number;
+  speakingLanguage?: string;
   shopAvatar: string;
   shopBanner: string;
   categories: string[];
@@ -248,3 +249,21 @@ export interface ArtisanUser {
   registeredAt: string;
 }
 
+// Stage 5.1: Buyer AI Identifier ("Snap & Discover") Types
+export type IdentifiedProductCategory =
+  | 'Woodwork'
+  | 'Pottery'
+  | 'Brasscraft'
+  | 'Textile'
+  | 'Furniture'
+  | 'Metal';
+
+export interface ProductIdentification {
+  item_name: string;
+  material: string;
+  category: IdentifiedProductCategory;
+  confidence: number;
+  short_description: string;
+}
+// Stage 6.2: Multimodal Voice Engine Types
+export * from './voice';

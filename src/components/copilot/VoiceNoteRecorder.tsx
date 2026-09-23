@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase/client';
 
+import { useAudioRecorder, type VoiceRecorderError } from '../../hooks/useAudioRecorder';
+
 export interface VoiceNoteRecorderProps {
   productId: string;
   artisanId: string;
@@ -25,11 +27,7 @@ export interface VoiceNoteRecorderProps {
 }
 
 export type VoiceRecorderState = 'idle' | 'recording' | 'preview' | 'uploading' | 'error';
-
-export interface VoiceRecorderError {
-  title: string;
-  subtitle: string;
-}
+export type { VoiceRecorderError };
 
 const STORAGE_BUCKET = 'product-voice-notes';
 const DEFAULT_MAX_SECONDS = 90;
@@ -44,10 +42,10 @@ const formatTime = (totalSeconds: number): string => {
 };
 
 /**
- * VoiceNoteRecorder Component (Stage 2.1)
+ * VoiceNoteRecorder Component (Stage 2.1 / Reused in Stage 6.2)
  *
  * In-app audio recorder for artisans to speak product descriptions in regional languages.
- * - Uses standard MediaRecorder Web API (browser and Capacitor WebView)
+ * - Uses shared `useAudioRecorder` hook for MediaRecorder Web API lifecycle
  * - States: idle -> recording (with live timer & waveform) -> preview -> uploading -> error
  * - Enforces max duration (90s) with visible countdown as limit approaches
  * - Icon-led, bilingual (EN/Hindi) UI matching dark artisan aesthetic
@@ -63,147 +61,45 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
   maxDurationSeconds = DEFAULT_MAX_SECONDS,
 }) => {
   const [recorderState, setRecorderState] = useState<VoiceRecorderState>('idle');
-  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [errorInfo, setErrorInfo] = useState<VoiceRecorderError | null>(null);
-
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
-  // Clean up timers, streams, and preview URLs on unmount
+  const {
+    elapsedSeconds,
+    audioBlob,
+    previewUrl,
+    errorInfo,
+    startRecording,
+    stopRecording,
+    reset: resetAudio,
+    clearError,
+  } = useAudioRecorder({
+    maxDurationSeconds,
+    timesliceMs: 250,
+    onRecordingComplete: () => {
+      setRecorderState('preview');
+    },
+  });
+
   useEffect(() => {
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (previewUrl && previewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
+    if (errorInfo) {
+      setRecorderState('error');
+    }
+  }, [errorInfo]);
 
   /**
    * Stop recording and finalize audio blob
    */
   const handleStopRecording = useCallback(() => {
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
-
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch (err) {
-        console.warn('[VoiceNoteRecorder] Error stopping mediaRecorder:', err);
-      }
-    }
-
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-  }, []);
+    stopRecording();
+  }, [stopRecording]);
 
   /**
    * Start audio capture using MediaRecorder Web API
    */
   const handleStartRecording = async () => {
-    setErrorInfo(null);
-    setAudioBlob(null);
-    setElapsedSeconds(0);
-    audioChunksRef.current = [];
-
-    if (previewUrl && previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('MediaDevices API not supported in this environment');
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
-
-      // Select supported audio mimeType
-      let mimeType = 'audio/webm';
-      if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
-        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-          mimeType = 'audio/webm;codecs=opus';
-        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-          mimeType = 'audio/webm';
-        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-          mimeType = 'audio/mp4';
-        } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
-          mimeType = 'audio/ogg';
-        }
-      }
-
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (event: BlobEvent) => {
-        if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const finalType = recorder.mimeType || mimeType || 'audio/webm';
-        const compiledBlob = new Blob(audioChunksRef.current, { type: finalType });
-        const objectUrl = URL.createObjectURL(compiledBlob);
-
-        setAudioBlob(compiledBlob);
-        setPreviewUrl(objectUrl);
-        setRecorderState('preview');
-      };
-
-      recorder.start(250); // Slice chunks every 250ms
-      setRecorderState('recording');
-
-      // Live timer and max duration enforcement
-      let secondsTicked = 0;
-      timerIntervalRef.current = setInterval(() => {
-        secondsTicked += 1;
-        setElapsedSeconds(secondsTicked);
-
-        if (secondsTicked >= maxDurationSeconds) {
-          handleStopRecording();
-        }
-      }, 1000);
-    } catch (err: unknown) {
-      const errStr = String(err).toLowerCase();
-      const errName = err instanceof Error ? err.name : '';
-
-      if (
-        errName === 'NotAllowedError' ||
-        errName === 'PermissionDeniedError' ||
-        errStr.includes('permission') ||
-        errStr.includes('denied')
-      ) {
-        setErrorInfo({
-          title: 'Microphone Access Needed / माइक्रोफ़ोन अनुमति चाहिए',
-          subtitle: 'Please allow microphone access in browser or phone settings to record.',
-        });
-      } else {
-        setErrorInfo({
-          title: 'Microphone Unavailable / माइक्रोफ़ोन शुरू नहीं हुआ',
-          subtitle: 'Could not connect to microphone. Tap below to retry.',
-        });
-      }
-
-      setRecorderState('error');
-    }
+    setRecorderState('recording');
+    await startRecording();
   };
 
   /**
@@ -215,15 +111,7 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
       audioPlayerRef.current.currentTime = 0;
     }
     setIsPlaying(false);
-
-    if (previewUrl && previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl);
-    }
-
-    setAudioBlob(null);
-    setPreviewUrl(null);
-    setElapsedSeconds(0);
-    setErrorInfo(null);
+    resetAudio();
     setRecorderState('idle');
   };
 
@@ -254,7 +142,7 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
     if (!audioBlob) return;
 
     setRecorderState('uploading');
-    setErrorInfo(null);
+    clearError();
 
     // Resolve authenticated artisan UID to ensure compatibility with Storage RLS
     let effectiveArtisanId = artisanId;

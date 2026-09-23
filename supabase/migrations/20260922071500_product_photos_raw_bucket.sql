@@ -9,6 +9,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 2. Storage RLS Policies
 -- Artisans can only upload raw product photos into their own artisan_id-prefixed folder:
 -- Folder structure: {artisan_id}/{product_id}/{timestamp}.jpg
+DROP POLICY IF EXISTS "Artisans can only upload to own folder in product-photos-raw" ON storage.objects;
 CREATE POLICY "Artisans can only upload to own folder in product-photos-raw"
   ON storage.objects
   FOR INSERT
@@ -19,6 +20,7 @@ CREATE POLICY "Artisans can only upload to own folder in product-photos-raw"
   );
 
 -- Users (buyers, artisans, and public app) can view raw product photos
+DROP POLICY IF EXISTS "Public read access for product-photos-raw" ON storage.objects;
 CREATE POLICY "Public read access for product-photos-raw"
   ON storage.objects
   FOR SELECT
@@ -26,6 +28,7 @@ CREATE POLICY "Public read access for product-photos-raw"
   USING (bucket_id = 'product-photos-raw');
 
 -- Artisans can update their own raw product photos
+DROP POLICY IF EXISTS "Artisans can update own photos in product-photos-raw" ON storage.objects;
 CREATE POLICY "Artisans can update own photos in product-photos-raw"
   ON storage.objects
   FOR UPDATE
@@ -36,6 +39,7 @@ CREATE POLICY "Artisans can update own photos in product-photos-raw"
   );
 
 -- Artisans can delete their own raw product photos
+DROP POLICY IF EXISTS "Artisans can delete own photos in product-photos-raw" ON storage.objects;
 CREATE POLICY "Artisans can delete own photos in product-photos-raw"
   ON storage.objects
   FOR DELETE

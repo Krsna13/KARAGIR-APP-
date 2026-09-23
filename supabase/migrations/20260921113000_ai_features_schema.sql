@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS market_reference_listings (
 ALTER TABLE market_reference_listings ENABLE ROW LEVEL SECURITY;
 
 -- market_reference_listings is read-only for authenticated users, writable only via service role
+DROP POLICY IF EXISTS "Authenticated users can read market reference listings" ON market_reference_listings;
 CREATE POLICY "Authenticated users can read market reference listings"
   ON market_reference_listings
   FOR SELECT

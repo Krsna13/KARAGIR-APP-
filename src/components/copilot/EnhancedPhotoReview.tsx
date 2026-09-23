@@ -12,9 +12,16 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase/client';
 import { processProductImage } from '../../services/imageEnhancementService';
+import { setImageFinalChoice } from '../../services/productImageService';
+import { enhancementQueue } from '../../services/imageProcessingQueue';
 
 export interface EnhancedPhotoReviewProps {
   productId: string;
+  /**
+   * Stage 6.2: when set, reviews one product_images row instead of the
+   * products row (choice saved per photo, retry goes through the sequential queue).
+   */
+  imageId?: string;
   initialOriginalUrl?: string;
   initialEnhancedUrl?: string;
   initialStatus?: 'pending' | 'processing' | 'enhanced' | 'failed';
@@ -38,6 +45,7 @@ export type DisplayView = 'enhanced' | 'original';
  */
 export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
   productId,
+  imageId,
   initialOriginalUrl = '',
   initialEnhancedUrl = '',
   initialStatus = 'processing',
@@ -53,17 +61,20 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const sourceTable = imageId ? 'product_images' : 'products';
+  const sourceId = imageId ?? productId;
+
   /**
-   * Fetch current product status from Supabase
+   * Fetch current product (or product image) status from Supabase
    */
   const fetchProduct = useCallback(async () => {
-    if (!productId) return;
+    if (!sourceId) return;
 
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from(sourceTable)
         .select('id, original_image_url, enhanced_image_url, image_processing_status, final_image_choice')
-        .eq('id', productId)
+        .eq('id', sourceId)
         .single();
 
       if (error) {
@@ -85,7 +96,7 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
     } catch (err: unknown) {
       console.warn('[EnhancedPhotoReview] Network/fetch error:', err);
     }
-  }, [productId]);
+  }, [sourceTable, sourceId]);
 
   // Initial fetch and real-time subscription / polling
   useEffect(() => {
@@ -96,14 +107,14 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
     try {
       if (supabase && typeof supabase.channel === 'function') {
         channel = supabase
-          .channel(`enhanced_review_${productId}`)
+          .channel(`enhanced_review_${sourceId}`)
           .on(
             'postgres_changes',
             {
               event: 'UPDATE',
               schema: 'public',
-              table: 'products',
-              filter: `id=eq.${productId}`,
+              table: sourceTable,
+              filter: `id=eq.${sourceId}`,
             },
             (payload: any) => {
               const newRow = payload?.new;
@@ -138,7 +149,7 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
         clearInterval(pollInterval);
       }
     };
-  }, [productId, fetchProduct, status]);
+  }, [sourceTable, sourceId, fetchProduct, status]);
 
   /**
    * Handle artisan selection: persist final_image_choice to products table
@@ -148,15 +159,20 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
     setErrorMessage(null);
 
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({
-          final_image_choice: choice,
-        })
-        .eq('id', productId);
+      if (imageId) {
+        // Per-photo choice; the service re-syncs the cover onto the products row.
+        await setImageFinalChoice(imageId, choice);
+      } else {
+        const { error } = await supabase
+          .from('products')
+          .update({
+            final_image_choice: choice,
+          })
+          .eq('id', productId);
 
-      if (error) {
-        console.warn('[EnhancedPhotoReview] Error saving final image choice:', error.message);
+        if (error) {
+          console.warn('[EnhancedPhotoReview] Error saving final image choice:', error.message);
+        }
       }
 
       const chosenUrl = choice === 'enhanced' ? (enhancedUrl || originalUrl) : originalUrl;
@@ -165,6 +181,12 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
         onComplete(chosenUrl, choice);
       }
     } catch (err: unknown) {
+      if (imageId) {
+        // Per-photo mode: do not report a choice that was not saved.
+        console.error('[EnhancedPhotoReview] Could not save photo choice:', err);
+        setErrorMessage('Could not save. Try again / सहेज नहीं सके, फिर कोशिश करें');
+        return;
+      }
       console.warn('[EnhancedPhotoReview] Network fallback saving choice:', err);
       // Even in offline fallback, notify caller with choice
       const fallbackUrl = choice === 'enhanced' ? (enhancedUrl || originalUrl) : originalUrl;
@@ -185,7 +207,9 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
     setErrorMessage(null);
 
     try {
-      const result = await processProductImage(productId);
+      const result = imageId
+        ? await enhancementQueue.enqueue(imageId)
+        : await processProductImage(productId);
       if (result.success && result.enhancedImageUrl) {
         setEnhancedUrl(result.enhancedImageUrl);
         setStatus('enhanced');
@@ -420,6 +444,14 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
       <div className="pt-3 border-t border-[#241711] space-y-2">
         {status === 'enhanced' && (
           <div className="space-y-2">
+            {errorMessage && (
+              <p
+                className="text-[11px] text-red-300 bg-red-950/40 border border-red-800/40 rounded-lg px-2 py-1.5 text-center"
+                data-testid="choice-error"
+              >
+                {errorMessage}
+              </p>
+            )}
             {/* Primary Action: Use Enhanced Photo */}
             <button
               type="button"

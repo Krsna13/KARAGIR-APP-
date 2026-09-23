@@ -6,5 +6,7 @@ export interface ArtisanRecord {
   location: any; // PostGIS Point
   address: string | null;
   category: string | null;
+  speaking_language?: string | null;
+  experience_years?: number | null;
   created_at: string;
 }

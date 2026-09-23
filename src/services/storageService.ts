@@ -31,7 +31,7 @@ export const updateArtisanProfile = async (id: string, updates: Database['public
 
 // Product Services
 export const fetchArtisanProducts = async (artisanId: string) => {
-  return await libGetProductsByArtisan(artisanId);
+  return await libGetProductsByArtisan(artisanId, 'published');
 };
 
 export const addProduct = async (product: Database['public']['Tables']['products']['Insert']) => {

@@ -2,6 +2,8 @@ import { supabase } from '../lib/supabase/client';
 import { runSegmentation } from './aiRuntimeService';
 import { correctLighting } from './lightingCorrectionService';
 import type { Product } from '../types';
+import type { ProductImage } from '../types/product';
+import { productImageStoragePaths, updateProductImageFields } from './productImageService';
 
 export interface ProcessProductImageResult {
   success: boolean;
@@ -10,7 +12,127 @@ export interface ProcessProductImageResult {
   error?: string;
 }
 
+export interface ProcessProductImageByIdResult {
+  success: boolean;
+  imageId: string;
+  productId?: string;
+  enhancedImageUrl?: string;
+  error?: string;
+}
+
 const STORAGE_BUCKET = 'product-photos-raw';
+
+/**
+ * Shared enhancement core: download raw image -> runSegmentation (background
+ * removal) -> correctLighting. Throws on any failure; callers own status handling.
+ */
+async function downloadAndEnhance(rawImageUrl: string): Promise<Blob> {
+  console.log(`[ImageEnhancementService] Downloading raw image from: ${rawImageUrl}`);
+  const imageResponse = await fetch(rawImageUrl);
+  if (!imageResponse.ok) {
+    throw new Error(`Failed to download raw image from ${rawImageUrl} (HTTP ${imageResponse.status})`);
+  }
+  const rawBlob = await imageResponse.blob();
+
+  console.log(`[ImageEnhancementService] Invoking runSegmentation() on raw blob (${rawBlob.size} bytes)...`);
+  const segmentedBlob = await runSegmentation(rawBlob);
+
+  console.log(`[ImageEnhancementService] Invoking correctLighting() on segmented blob (${segmentedBlob.size} bytes)...`);
+  return await correctLighting(segmentedBlob);
+}
+
+/**
+ * Per-image version of processProductImage (Stage 6.2).
+ *
+ * Same status transitions (pending -> processing -> enhanced | failed) and the
+ * same no-silent-failure contract: never throws, always returns a result, and
+ * on error sets the row to 'failed' and logs. Reads/writes the `product_images`
+ * row, uploads to {artisan_id}/{product_id}/{image_id}/enhanced.png so photos
+ * never overwrite each other, and re-syncs the cover onto the products row
+ * after every transition (via updateProductImageFields -> syncCoverToProduct).
+ *
+ * Do not call this directly from UI: go through enhancementQueue so images
+ * are processed one at a time.
+ */
+export async function processProductImageById(imageId: string): Promise<ProcessProductImageByIdResult> {
+  console.log(`[ImageEnhancementService] Starting image enhancement pipeline for image: ${imageId}`);
+
+  if (!imageId) {
+    console.error('[ImageEnhancementService] Invalid imageId provided.');
+    return { success: false, imageId, error: 'Invalid imageId' };
+  }
+
+  let productId: string | undefined;
+
+  try {
+    const { data: image, error: fetchError } = await supabase
+      .from('product_images')
+      .select('id, product_id, artisan_id, original_image_url, image_processing_status')
+      .eq('id', imageId)
+      .single();
+
+    if (fetchError || !image) {
+      throw new Error(`Failed to fetch image ${imageId}: ${fetchError?.message || 'Image not found'}`);
+    }
+    const row = image as Pick<ProductImage, 'id' | 'product_id' | 'artisan_id' | 'original_image_url'>;
+    productId = row.product_id;
+
+    if (!row.original_image_url) {
+      throw new Error(`Image ${imageId} does not have an original_image_url to process.`);
+    }
+
+    const processing = await updateProductImageFields(imageId, row.product_id, {
+      image_processing_status: 'processing',
+    });
+    if (processing.error) {
+      console.warn(`[ImageEnhancementService] Warning setting 'processing' status:`, processing.error);
+    }
+
+    const enhancedBlob = await downloadAndEnhance(row.original_image_url);
+
+    const enhancedStoragePath = productImageStoragePaths(row).enhanced;
+    console.log(`[ImageEnhancementService] Uploading enhanced image to: ${STORAGE_BUCKET}/${enhancedStoragePath}`);
+
+    const { error: uploadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(enhancedStoragePath, enhancedBlob, {
+        contentType: enhancedBlob.type || 'image/png',
+        upsert: true,
+      });
+    if (uploadError) {
+      throw new Error(`Enhanced image upload failed: ${uploadError.message}`);
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(enhancedStoragePath);
+    const enhancedImageUrl = publicUrlData?.publicUrl || enhancedStoragePath;
+
+    const finalUpdate = await updateProductImageFields(imageId, row.product_id, {
+      enhanced_image_url: enhancedImageUrl,
+      image_processing_status: 'enhanced',
+    });
+    if (finalUpdate.error) {
+      throw new Error(`Failed to save enhanced status: ${finalUpdate.error}`);
+    }
+
+    console.log(`[ImageEnhancementService] Successfully enhanced image ${imageId} -> ${enhancedImageUrl}`);
+    return { success: true, imageId, productId, enhancedImageUrl };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[ImageEnhancementService] Error processing image ${imageId}:`, errorMessage);
+
+    try {
+      if (productId) {
+        await updateProductImageFields(imageId, productId, { image_processing_status: 'failed' });
+      } else {
+        await supabase.from('product_images').update({ image_processing_status: 'failed' }).eq('id', imageId);
+      }
+    } catch (statusErr) {
+      console.error(`[ImageEnhancementService] Failed to update image status to 'failed':`, statusErr);
+    }
+
+    return { success: false, imageId, productId, error: errorMessage };
+  }
+}
 
 /**
  * Service to process and enhance product images using AI segmentation.
@@ -60,21 +182,8 @@ export async function processProductImage(productId: string): Promise<ProcessPro
       console.warn(`[ImageEnhancementService] Warning setting 'processing' status:`, processingStatusError.message);
     }
 
-    // 3. Fetch original raw image blob
-    console.log(`[ImageEnhancementService] Downloading raw image from: ${product.original_image_url}`);
-    const imageResponse = await fetch(product.original_image_url);
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to download raw image from ${product.original_image_url} (HTTP ${imageResponse.status})`);
-    }
-    const rawBlob = await imageResponse.blob();
-
-    // 4. Run AI background removal segmentation
-    console.log(`[ImageEnhancementService] Invoking runSegmentation() on raw blob (${rawBlob.size} bytes)...`);
-    const segmentedBlob = await runSegmentation(rawBlob);
-
-    // 5. Run Lighting and Color Correction
-    console.log(`[ImageEnhancementService] Invoking correctLighting() on segmented blob (${segmentedBlob.size} bytes)...`);
-    const enhancedBlob = await correctLighting(segmentedBlob);
+    // 3-5. Download raw image, segment, lighting correction
+    const enhancedBlob = await downloadAndEnhance(product.original_image_url);
 
     // 6. Upload enhanced image to product-photos-raw bucket
     const artisanFolder = product.artisan_id || 'artisan';
@@ -165,4 +274,12 @@ export function getDisplayImageUrl(product: Product): string {
 
   // No explicit choice yet: fallback order is enhanced -> original -> imageUrl
   return product.enhanced_image_url || product.original_image_url || product.imageUrl || '';
+}
+
+/** Same resolution rules as getDisplayImageUrl, for a single product_images row. */
+export function getProductImageDisplayUrl(
+  image: Pick<ProductImage, 'original_image_url' | 'enhanced_image_url' | 'final_image_choice'>
+): string {
+  if (image.final_image_choice === 'original') return image.original_image_url || '';
+  return image.enhanced_image_url || image.original_image_url || '';
 }

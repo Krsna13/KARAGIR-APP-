@@ -10,7 +10,9 @@ interface ArtisanProduct3DEditorProps {
 }
 
 export const ArtisanProduct3DEditor: React.FC<ArtisanProduct3DEditorProps> = ({ artisan, product }) => {
-  const basePrice = product ? ('price' in product ? product.price : product.startingPrice) : 32000;
+  const rawBasePrice = product ? ('price' in product ? product.price : product.startingPrice) : 32000;
+  const hasBasePrice = rawBasePrice != null && rawBasePrice > 0;
+  const basePrice = hasBasePrice ? rawBasePrice : null;
   const productTitle = product ? ('title' in product ? product.title : product.name) : "Bespoke Hand-Carved Dining Table";
   
   const [selectedWood, setSelectedWood] = useState({ name: "Sagwan Teak", priceDiff: 0 });
@@ -21,14 +23,15 @@ export const ArtisanProduct3DEditor: React.FC<ArtisanProduct3DEditorProps> = ({ 
   const [is3DFullscreenOpen, setIs3DFullscreenOpen] = useState(false);
   const [isBooked, setIsBooked] = useState(false);
 
-  // Dynamic Total Calculation
-  const totalAmount = 
-    basePrice + 
+  // Dynamic Upgrades and Total Calculation
+  const upgradesTotal = 
     selectedWood.priceDiff + 
     capacity.priceDiff + 
     (hasBrassInlay ? 2500 : 0) + 
     (hasMOP ? 3800 : 0) + 
     selectedPolish.priceDiff;
+
+  const totalAmount = basePrice != null ? basePrice + upgradesTotal : null;
 
   const handleBookOrder = () => {
     setIsBooked(true);
@@ -244,7 +247,9 @@ export const ArtisanProduct3DEditor: React.FC<ArtisanProduct3DEditorProps> = ({ 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between text-slate-400">
                 <span>Base Item: {productTitle}</span>
-                <span className="font-mono text-white">₹{basePrice.toLocaleString("en-IN")}</span>
+                <span className="font-mono text-white">
+                  {basePrice != null ? `₹${basePrice.toLocaleString("en-IN")}` : "Price not set / कीमत तय नहीं"}
+                </span>
               </div>
               {selectedWood.priceDiff !== 0 && (
                 <div className="flex justify-between text-slate-400">
@@ -290,18 +295,20 @@ export const ArtisanProduct3DEditor: React.FC<ArtisanProduct3DEditorProps> = ({ 
           <div className="bg-[#1A120E] border border-[#EA580C] p-5 rounded-2xl space-y-3">
             <div className="flex justify-between text-xs text-slate-400">
               <span>Base Product Price:</span>
-              <span className="font-mono text-white">₹{basePrice.toLocaleString("en-IN")}</span>
+              <span className="font-mono text-white">
+                {basePrice != null ? `₹${basePrice.toLocaleString("en-IN")}` : "Price not set / कीमत तय नहीं"}
+              </span>
             </div>
             <div className="flex justify-between text-xs text-slate-400">
               <span>Upgrades & Accents Total:</span>
               <span className="text-[#EA580C] font-mono font-bold">
-                +₹{(totalAmount - basePrice).toLocaleString("en-IN")}
+                +₹{upgradesTotal.toLocaleString("en-IN")}
               </span>
             </div>
             <div className="border-t border-[#2A1E17] pt-2.5 flex justify-between items-center">
               <span className="text-xs font-bold text-slate-200 uppercase">Total Customized Price:</span>
               <span className="text-2xl font-extrabold text-[#EAB308] font-mono glow-orange">
-                ₹{totalAmount.toLocaleString("en-IN")}
+                {totalAmount != null ? `₹${totalAmount.toLocaleString("en-IN")}` : "Price not set / कीमत तय नहीं"}
               </span>
             </div>
 

@@ -19,6 +19,7 @@ import { MobileAppShell } from './components/mobile/MobileAppShell';
 import { MobileHome } from './components/mobile/MobileHome';
 import { MobileStatusBar } from './components/mobile/MobileStatusBar';
 import { DatasetCollector } from './components/dev/DatasetCollector';
+import { DevVoiceInputPage } from './components/dev/DevVoiceInputPage';
 
 function AppContent() {
   const [mode, setMode] = useState<AppMode>('buyer');
@@ -28,12 +29,19 @@ function AppContent() {
   const [activeReelArtisan, setActiveReelArtisan] = useState<Artisan | null>(null);
   const [selectedProductForCustomization, setSelectedProductForCustomization] = useState<Product | ProductItem | null>(null);
 
-  // Dev-only route detection: e.g. /dev/dataset-collector or #/dev/dataset-collector
+  // Dev-only route detection: e.g. /dev/dataset-collector or /dev/voice-input
   const [isDevDatasetCollector, setIsDevDatasetCollector] = useState<boolean>(() => {
     if (!import.meta.env.DEV) return false;
     const path = window.location.pathname.toLowerCase();
     const hash = window.location.hash.toLowerCase();
     return path.includes('/dev/dataset-collector') || hash.includes('/dev/dataset-collector');
+  });
+
+  const [isDevVoiceInput, setIsDevVoiceInput] = useState<boolean>(() => {
+    if (!import.meta.env.DEV) return false;
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    return path.includes('/dev/voice-input') || hash.includes('/dev/voice-input');
   });
 
   useEffect(() => {
@@ -43,6 +51,9 @@ function AppContent() {
       const hash = window.location.hash.toLowerCase();
       setIsDevDatasetCollector(
         path.includes('/dev/dataset-collector') || hash.includes('/dev/dataset-collector')
+      );
+      setIsDevVoiceInput(
+        path.includes('/dev/voice-input') || hash.includes('/dev/voice-input')
       );
     };
 
@@ -65,6 +76,25 @@ function AppContent() {
               onBack={() => {
                 window.history.pushState(null, '', '/');
                 setIsDevDatasetCollector(false);
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (import.meta.env.DEV && isDevVoiceInput) {
+    return (
+      <div className="min-h-screen bg-[#0A0604] text-white flex flex-col items-center justify-center selection:bg-[#EA580C] selection:text-white w-full sm:py-4">
+        {/* Smartphone Chassis Screen Container */}
+        <div className="w-full max-w-[430px] h-[100dvh] sm:h-[92vh] sm:max-h-[890px] bg-[#120B08] flex flex-col relative sm:rounded-[44px] sm:border-[7px] sm:border-[#2A1E17] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),0_0_40px_rgba(234,88,12,0.18)] overflow-hidden">
+          <MobileStatusBar />
+          <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar relative">
+            <DevVoiceInputPage
+              onBack={() => {
+                window.history.pushState(null, '', '/');
+                setIsDevVoiceInput(false);
               }}
             />
           </div>

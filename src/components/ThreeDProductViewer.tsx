@@ -26,7 +26,8 @@ export const ThreeDProductViewer: React.FC<ThreeDProductViewerProps> = ({ produc
   const [aiStatusMessage, setAiStatusMessage] = useState<string | null>(null);
 
   const { selectedPrimaryMaterial, calculateAdjustedPrice, selectedAccentMaterials } = useMaterial();
-  const adjustedPrice = calculateAdjustedPrice(product.price);
+  const hasPrice = product.price != null && product.price > 0;
+  const adjustedPrice = hasPrice ? calculateAdjustedPrice(product.price) : null;
 
   // Lock background scroll when modal opens
   useEffect(() => {
@@ -413,11 +414,17 @@ export const ThreeDProductViewer: React.FC<ThreeDProductViewerProps> = ({ produc
             <div className="mb-5 p-3.5 rounded-2xl bg-[#120B08] border border-[#2A1E17] flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-400">Material-Adjusted Price</span>
-                <p className="text-xl font-extrabold text-[#EAB308] font-mono">₹{adjustedPrice.toLocaleString('en-IN')}</p>
+                {adjustedPrice != null ? (
+                  <p className="text-xl font-extrabold text-[#EAB308] font-mono">₹{adjustedPrice.toLocaleString('en-IN')}</p>
+                ) : (
+                  <p className="text-xs font-bold text-amber-500/90 pt-1">Price not set / कीमत तय नहीं</p>
+                )}
               </div>
-              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-800">
-                Grade-A Verified
-              </span>
+              {hasPrice && (
+                <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-800">
+                  Grade-A Verified
+                </span>
+              )}
             </div>
 
             {/* ✨ AI 3D GENERATIVE TEXT PROMPT EDITOR IN MODAL */}

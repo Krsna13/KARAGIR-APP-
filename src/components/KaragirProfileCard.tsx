@@ -149,14 +149,14 @@ export const KaragirProfileCard: React.FC = () => {
                 onClick={() => {
                   const product: ProductItem = {
                     id: work.id,
-                    name: work.title,
+                    name: work.title || 'Handcrafted Item',
                     slug: work.id,
                     category: work.category,
                     coverImage: work.coverImage,
                     galleryImages: work.galleryImages,
-                    description: `Masterfully crafted using ${work.material}. Lead time: ${work.leadTimeDays} days.`,
-                    materials: [work.material],
-                    startingPrice: work.price
+                    description: `Masterfully crafted using ${work.material || 'quality materials'}. Lead time: ${work.leadTimeDays || 7} days.`,
+                    materials: [work.material || 'Handcrafted'],
+                    startingPrice: work.price != null && work.price > 0 ? work.price : null
                   };
                   setSelectedProduct(product);
                 }}
@@ -178,12 +178,20 @@ export const KaragirProfileCard: React.FC = () => {
                 
                 <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
                   <div>
-                    <h3 className="text-sm font-bold text-white group-hover:text-[#EA580C] transition-colors line-clamp-1">{work.title}</h3>
-                    <p className="text-xs text-slate-400 line-clamp-1 mt-1">{work.material}</p>
+                    <h3 className="text-sm font-bold text-white group-hover:text-[#EA580C] transition-colors line-clamp-1">
+                      {work.title || 'Untitled Item'}
+                    </h3>
+                    <p className="text-xs text-slate-400 line-clamp-1 mt-1">
+                      {work.material || 'Handcrafted'}
+                    </p>
                   </div>
                   <div className="flex items-center justify-between mt-auto pt-2 border-t border-[#2A1E17]">
-                    <span className="text-[#EAB308] font-mono font-bold text-sm">₹{work.price.toLocaleString('en-IN')}</span>
-                    <span className="text-[10px] text-slate-500 font-semibold">{work.leadTimeDays} Days</span>
+                    <span className="text-[#EAB308] font-mono font-bold text-sm">
+                      {work.price != null && work.price > 0
+                        ? `₹${work.price.toLocaleString('en-IN')}` 
+                        : 'Price not set / कीमत तय नहीं'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-semibold">{work.leadTimeDays || 7} Days</span>
                   </div>
                 </div>
               </div>

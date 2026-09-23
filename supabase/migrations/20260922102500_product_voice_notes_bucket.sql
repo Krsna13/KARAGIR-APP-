@@ -10,6 +10,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 2. Storage RLS Policies
 -- Artisans can only upload voice notes into their own artisan_id-prefixed folder:
 -- Folder structure: {artisan_id}/{product_id}/{timestamp}.webm
+DROP POLICY IF EXISTS "Artisans can only upload to own folder in product-voice-notes" ON storage.objects;
 CREATE POLICY "Artisans can only upload to own folder in product-voice-notes"
   ON storage.objects
   FOR INSERT
@@ -20,6 +21,7 @@ CREATE POLICY "Artisans can only upload to own folder in product-voice-notes"
   );
 
 -- Users (buyers, artisans, and public app) can listen to/read voice notes
+DROP POLICY IF EXISTS "Public read access for product-voice-notes" ON storage.objects;
 CREATE POLICY "Public read access for product-voice-notes"
   ON storage.objects
   FOR SELECT
@@ -27,6 +29,7 @@ CREATE POLICY "Public read access for product-voice-notes"
   USING (bucket_id = 'product-voice-notes');
 
 -- Artisans can update their own voice notes
+DROP POLICY IF EXISTS "Artisans can update own voice notes in product-voice-notes" ON storage.objects;
 CREATE POLICY "Artisans can update own voice notes in product-voice-notes"
   ON storage.objects
   FOR UPDATE
@@ -37,6 +40,7 @@ CREATE POLICY "Artisans can update own voice notes in product-voice-notes"
   );
 
 -- Artisans can delete their own voice notes
+DROP POLICY IF EXISTS "Artisans can delete own voice notes in product-voice-notes" ON storage.objects;
 CREATE POLICY "Artisans can delete own voice notes in product-voice-notes"
   ON storage.objects
   FOR DELETE

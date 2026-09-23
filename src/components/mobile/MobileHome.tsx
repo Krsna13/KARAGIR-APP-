@@ -7,6 +7,8 @@ import type { Artisan, LocationPin } from '../../types';
 import { MOCK_ARTISANS } from '../../data/mockData';
 import { useKaragirStore } from '../../context/KaragirStoreContext';
 import { convertStoreToArtisan } from '../../utils/artisanConverter';
+import { PhotoSourceSheet } from '../discover/PhotoSourceSheet';
+import { SnapAndDiscover } from '../discover/SnapAndDiscover';
 
 interface MobileHomeProps {
   selectedLocation: LocationPin;
@@ -25,6 +27,8 @@ export const MobileHome: React.FC<MobileHomeProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [isPhotoSheetOpen, setIsPhotoSheetOpen] = useState(false);
+  const [activePhoto, setActivePhoto] = useState<{ blob: Blob; previewUrl: string } | null>(null);
   const { allStores } = useKaragirStore();
 
   const dynamicArtisans = Object.values(allStores || {}).map((store, idx) => convertStoreToArtisan(store, idx));
@@ -77,9 +81,11 @@ export const MobileHome: React.FC<MobileHomeProps> = ({
               <Mic className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={onOpenCustomBuilder}
-              className="w-7 h-7 rounded-xl bg-[#261B15] hover:bg-[#EA580C] hover:text-white text-slate-300 flex items-center justify-center transition-colors"
-              title="Snap Sketch for 3D"
+              onClick={() => setIsPhotoSheetOpen(true)}
+              className="w-7 h-7 rounded-xl bg-[#261B15] hover:bg-[#EA580C] hover:text-white text-slate-300 flex items-center justify-center transition-colors active:scale-95"
+              title="Snap & Discover Craft Photo"
+              data-testid="search-bar-camera-button"
+              aria-label="Snap & Discover"
             >
               <Camera className="w-3.5 h-3.5" />
             </button>
@@ -338,6 +344,29 @@ export const MobileHome: React.FC<MobileHomeProps> = ({
           </p>
         </div>
       </div>
+
+      {/* 7. Snap & Discover Bottom Sheet Modal */}
+      <PhotoSourceSheet
+        isOpen={isPhotoSheetOpen}
+        onClose={() => setIsPhotoSheetOpen(false)}
+        onPhotoSelected={(blob, previewUrl) => {
+          setIsPhotoSheetOpen(false);
+          setActivePhoto({ blob, previewUrl });
+        }}
+      />
+
+      {/* 8. Snap & Discover Full Results Overlay */}
+      {activePhoto && (
+        <SnapAndDiscover
+          photoBlob={activePhoto.blob}
+          previewUrl={activePhoto.previewUrl}
+          onClose={() => setActivePhoto(null)}
+          onTryAnother={() => {
+            setActivePhoto(null);
+            setIsPhotoSheetOpen(true);
+          }}
+        />
+      )}
     </div>
   );
 };

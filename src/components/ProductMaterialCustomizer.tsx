@@ -23,7 +23,8 @@ export const ProductMaterialCustomizer: React.FC<ProductMaterialCustomizerProps>
     calculateAdjustedPrice,
   } = useMaterial();
 
-  const adjustedPrice = calculateAdjustedPrice(product.price);
+  const hasPrice = product.price != null && product.price > 0;
+  const adjustedPrice = hasPrice ? calculateAdjustedPrice(product.price) : null;
 
   return (
     <div className="bg-[#1F1510] border border-[#2A1E17] rounded-3xl p-6 space-y-6 shadow-2xl">
@@ -143,13 +144,21 @@ export const ProductMaterialCustomizer: React.FC<ProductMaterialCustomizerProps>
         <div className="p-3.5 rounded-2xl bg-[#120B08] border border-[#2A1E17] flex items-center justify-between">
           <div>
             <span className="text-[10px] text-slate-400 uppercase font-semibold block">Calculated Custom Price</span>
-            <span className="text-2xl font-extrabold text-[#EAB308] font-mono">
-              ₹{adjustedPrice.toLocaleString('en-IN')}
-            </span>
+            {adjustedPrice != null ? (
+              <span className="text-2xl font-extrabold text-[#EAB308] font-mono">
+                ₹{adjustedPrice.toLocaleString('en-IN')}
+              </span>
+            ) : (
+              <span className="text-xs font-bold text-amber-500/90 pt-1 block">
+                Price not set / कीमत तय नहीं
+              </span>
+            )}
           </div>
-          <span className="text-[11px] text-emerald-400 font-semibold bg-emerald-950/80 px-2.5 py-1 rounded-full border border-emerald-800">
-            Escrow Price Locked
-          </span>
+          {hasPrice && (
+            <span className="text-[11px] text-emerald-400 font-semibold bg-emerald-950/80 px-2.5 py-1 rounded-full border border-emerald-800">
+              Escrow Price Locked
+            </span>
+          )}
         </div>
       </div>
 

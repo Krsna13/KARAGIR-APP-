@@ -114,7 +114,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ product,
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{product.category}</div>
             <div className="flex items-start justify-between gap-2">
               <h2 className="text-lg font-bold text-white leading-tight">{product.name}</h2>
-              <div className="text-base font-mono font-bold text-[#EAB308] shrink-0">₹{product.startingPrice.toLocaleString('en-IN')}</div>
+              <div className="text-base font-mono font-bold text-[#EAB308] shrink-0">
+                {product.startingPrice != null && product.startingPrice > 0
+                  ? `₹${product.startingPrice.toLocaleString('en-IN')}` 
+                  : 'Price not set / कीमत तय नहीं'}
+              </div>
             </div>
           </div>
 
@@ -125,7 +129,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ product,
           <div className="space-y-1.5">
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Premium Materials</h4>
             <div className="flex flex-wrap gap-1.5">
-              {product.materials.map((mat, idx) => (
+              {(product.materials || []).map((mat, idx) => (
                 <span key={idx} className="px-2 py-0.5 rounded-lg bg-[#1F1510] border border-[#2A1E17] text-[11px] text-slate-200 font-medium">
                   {mat}
                 </span>

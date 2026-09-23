@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Hammer, MapPin, ChevronDown, ShieldCheck, Camera } from 'lucide-react';
+import { Hammer, MapPin, ChevronDown, ShieldCheck } from 'lucide-react';
 import type { AppMode, LocationPin } from '../../types';
 import { useKaragirStore } from '../../context/KaragirStoreContext';
 
@@ -78,23 +78,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
       {/* Right Controls: Mode Switcher, Dev AI Toggle & Avatar */}
       <div className="flex items-center space-x-1.5">
-        {import.meta.env.DEV && (
-          <div className="flex items-center space-x-1">
-            <AIDevBackendToggle />
-            <button
-              onClick={() => {
-                window.history.pushState(null, '', '/dev/dataset-collector');
-                window.dispatchEvent(new PopStateEvent('popstate'));
-              }}
-              type="button"
-              className="p-1 rounded-full bg-[#1F1510] text-amber-400 hover:text-amber-300 border border-amber-500/40 hover:border-amber-400 transition-all text-[10px] flex items-center justify-center cursor-pointer active:scale-95 shadow-sm"
-              title="[DEV] Open Dataset Collector (/dev/dataset-collector)"
-              aria-label="Open Dataset Collector"
-            >
-              <Camera className="w-2.5 h-2.5" />
-            </button>
-          </div>
-        )}
+        {import.meta.env.DEV && <AIDevBackendToggle />}
         <button
           onClick={handleToggleMode}
           className={`flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${

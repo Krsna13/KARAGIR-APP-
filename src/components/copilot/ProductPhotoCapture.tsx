@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Camera as CameraIcon,
   RotateCcw,
@@ -10,11 +10,10 @@ import {
   Sparkles,
   ArrowLeft,
 } from 'lucide-react';
-import { Capacitor } from '@capacitor/core';
-import { Camera, CameraResultType, CameraSource, type PermissionStatus } from '@capacitor/camera';
 import { supabase } from '../../lib/supabase/client';
 import { processProductImage } from '../../services/imageEnhancementService';
 import { EnhancedPhotoReview } from './EnhancedPhotoReview';
+import { useImageCapture } from '../../hooks/useImageCapture';
 
 export interface ProductPhotoCaptureProps {
   productId: string;
@@ -59,7 +58,6 @@ export const ProductPhotoCapture: React.FC<ProductPhotoCaptureProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [errorInfo, setErrorInfo] = useState<CaptureError | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Clean up object URLs on unmount or when photo changes
   useEffect(() => {
@@ -71,112 +69,34 @@ export const ProductPhotoCapture: React.FC<ProductPhotoCaptureProps> = ({
   }, [previewUrl]);
 
   /**
-   * Native camera capture via Capacitor Camera API
+   * Shared camera/gallery capture hook (native Capacitor Camera plugin on
+   * mobile, accessible HTML5 file input on web with permission fallbacks).
+   * Same hook used by the buyer-side PhotoSourceSheet (Stage 5.2).
    */
-  const handleNativeCapture = async () => {
-    setErrorInfo(null);
-
-    try {
-      // 1. Verify / request camera permissions on native platform
-      let permissions: PermissionStatus;
-      try {
-        permissions = await Camera.checkPermissions();
-        if (permissions.camera !== 'granted') {
-          permissions = await Camera.requestPermissions({ permissions: ['camera'] });
-        }
-      } catch {
-        // Some web/Capacitor hybrids may throw here; continue to getPhoto
-        permissions = { camera: 'granted', photos: 'granted' };
-      }
-
-      if (permissions.camera === 'denied') {
-        setErrorInfo({
-          type: 'permission',
-          title: 'Camera Access Needed / कैमरा अनुमति चाहिए',
-          subtitle: 'Please allow camera permission in phone settings.',
-        });
-        setCaptureState('error');
-        return;
-      }
-
-      // 2. Open Camera
-      const photo = await Camera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Uri,
-        source: CameraSource.Camera,
-      });
-
-      if (photo.webPath) {
-        const response = await fetch(photo.webPath);
-        const blob = await response.blob();
-
-        if (previewUrl && previewUrl.startsWith('blob:')) {
-          URL.revokeObjectURL(previewUrl);
-        }
-
+  const { captureFromCamera, cameraInputRef: fileInputRef, handleWebCameraChange: handleWebFileSelect } =
+    useImageCapture({
+      onPhotoSelected: (blob, url) => {
         setPhotoBlob(blob);
-        setPreviewUrl(photo.webPath);
+        setPreviewUrl(url);
+        setErrorInfo(null);
         setCaptureState('preview');
-      }
-    } catch (err: unknown) {
-      // User cancelled camera without taking photo
-      const errStr = String(err).toLowerCase();
-      if (errStr.includes('cancelled') || errStr.includes('canceled') || errStr.includes('user cancelled')) {
-        return;
-      }
-
-      // Fallback to file input if native camera encounters an unexpected error
-      if (fileInputRef.current) {
-        fileInputRef.current.click();
-      } else {
+      },
+      onError: (err) => {
         setErrorInfo({
-          type: 'device',
-          title: 'Camera Unavailable / कैमरा शुरू नहीं हुआ',
-          subtitle: 'Tap below to select photo from gallery or try again.',
+          // Local CaptureError type has no 'invalid_type' variant; map it to 'device'.
+          type: err.type === 'invalid_type' ? 'device' : err.type,
+          title: err.title,
+          subtitle: err.subtitle,
         });
         setCaptureState('error');
-      }
-    }
-  };
-
-  /**
-   * Web file input handler (<input type="file" accept="image/*" capture="environment">)
-   */
-  const handleWebFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setErrorInfo({
-        type: 'device',
-        title: 'Please Select an Image / कृपया फोटो चुनें',
-        subtitle: 'Only JPEG, PNG, and WEBP photos are supported.',
-      });
-      setCaptureState('error');
-      return;
-    }
-
-    if (previewUrl && previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl);
-    }
-
-    const objectUrl = URL.createObjectURL(file);
-    setPhotoBlob(file);
-    setPreviewUrl(objectUrl);
-    setErrorInfo(null);
-    setCaptureState('preview');
-  };
+      },
+    });
 
   /**
    * Main capture trigger — dynamically routes to native or web flow
    */
   const handleTriggerCapture = () => {
-    if (Capacitor.isNativePlatform()) {
-      handleNativeCapture();
-    } else if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    captureFromCamera();
   };
 
   /**

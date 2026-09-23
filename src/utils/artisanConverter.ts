@@ -1,5 +1,7 @@
 import type { KaragirStore, Artisan, CategoryType } from '../types';
 import type { RegionalArtisan } from '../data/regionalArtisansDatabase';
+import type { ArtisanRecord } from '../types/artisan';
+import type { Database } from '../lib/supabase/database.types';
 
 // Mock coordinates around Nashik for newly registered artisans
 const MOCK_NASHIK_COORDS = [
@@ -9,12 +11,54 @@ const MOCK_NASHIK_COORDS = [
   { lat: 19.9650, lng: 73.7550, locality: 'Ambad MIDC', pincode: '422010' }
 ];
 
-export const convertStoreToArtisan = (store: KaragirStore, index: number): Artisan => {
+/**
+ * Bidirectional Mapping: Database -> Frontend Store
+ * Maps PostgreSQL column `experience_years` to frontend `yearsExperience`.
+ */
+export const convertDbArtisanToStore = (
+  record: ArtisanRecord
+): Partial<KaragirStore> => {
+  return {
+    id: record.id,
+    artisanName: record.name,
+    mobile: record.phone,
+    shopName: record.shop_name || '',
+    craftSpecialty: record.category || '',
+    location: record.address || '',
+    yearsExperience: record.experience_years ?? 0,
+    speakingLanguage: record.speaking_language || undefined,
+  };
+};
+
+/**
+ * Bidirectional Mapping: Frontend Store -> Database
+ * Maps frontend `yearsExperience` to PostgreSQL column `experience_years`.
+ */
+export const convertStoreToDbArtisan = (
+  store: Partial<KaragirStore>
+): Database['public']['Tables']['artisans']['Update'] => {
+  const updates: Database['public']['Tables']['artisans']['Update'] = {};
+
+  if (store.artisanName !== undefined) updates.name = store.artisanName;
+  if (store.shopName !== undefined) updates.shop_name = store.shopName;
+  if (store.location !== undefined) updates.address = store.location;
+  if (store.craftSpecialty !== undefined) updates.category = store.craftSpecialty;
+  if (store.speakingLanguage !== undefined) updates.speaking_language = store.speakingLanguage;
+  if (store.yearsExperience !== undefined) updates.experience_years = store.yearsExperience;
+
+  return updates;
+};
+
+/**
+ * Maps KaragirStore to the public buyer-facing Artisan model used on storefronts.
+ * Ensures `yearsExperience` is faithfully preserved as `experienceYears`.
+ */
+export const convertStoreToArtisan = (store: KaragirStore, index: number = 0): Artisan => {
   // Assign a semi-random map coordinate based on index
   const coord = MOCK_NASHIK_COORDS[index % MOCK_NASHIK_COORDS.length];
   
   // Convert categories (which are strings) to CategoryType safely
-  const mappedCrafts = store.categories.length > 0 
+  const mappedCrafts = store.categories && store.categories.length > 0 
     ? store.categories as CategoryType[] 
     : ['Woodwork'] as CategoryType[];
 
@@ -22,7 +66,7 @@ export const convertStoreToArtisan = (store: KaragirStore, index: number): Artis
     id: store.id,
     name: store.artisanName,
     shopName: store.shopName || `${store.artisanName}'s Workshop`,
-    experienceYears: store.yearsExperience || 1,
+    experienceYears: store.yearsExperience ?? 0,
     rating: store.rating || 5.0,
     reviewsCount: Math.floor(Math.random() * 50) + 1, // Mock reviews
     isVerified: store.isVerified,
@@ -41,7 +85,7 @@ export const convertStoreToArtisan = (store: KaragirStore, index: number): Artis
   };
 };
 
-export const convertStoreToRegionalArtisan = (store: KaragirStore, index: number): RegionalArtisan => {
+export const convertStoreToRegionalArtisan = (store: KaragirStore, index: number = 0): RegionalArtisan => {
   const coord = MOCK_NASHIK_COORDS[index % MOCK_NASHIK_COORDS.length];
   
   return {
@@ -57,7 +101,7 @@ export const convertStoreToRegionalArtisan = (store: KaragirStore, index: number
     lng: coord.lng + (Math.random() * 0.01 - 0.005),
     craftCategory: store.craftSpecialty || 'Custom Joinery',
     rating: store.rating || 5.0,
-    experienceYears: store.yearsExperience || 1,
+    experienceYears: store.yearsExperience ?? 0,
     isVerified: store.isVerified,
     availability: 'Available Now',
     image: store.shopAvatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',

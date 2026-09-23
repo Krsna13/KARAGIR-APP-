@@ -360,7 +360,11 @@ export const ArtisanPortal: React.FC<ArtisanPortalProps> = ({ onBackToBuyer }) =
 
         {/* Catalog & Categories Tab */}
         {activeSidebarTab === 'catalog' && (
-          <CatalogEditor storeData={storeData} addWorkItem={addWorkItem} />
+          <CatalogEditor 
+            storeData={storeData} 
+            addWorkItem={addWorkItem} 
+            saveStoreProfile={saveStoreProfile} 
+          />
         )}
 
       </main>

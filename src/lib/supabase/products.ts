@@ -5,15 +5,60 @@ import type { Database } from './database.types';
 type InsertProduct = Database['public']['Tables']['products']['Insert'];
 type UpdateProduct = Database['public']['Tables']['products']['Update'];
 
-export const getProductsByArtisan = async (artisanId: string): Promise<ProductRecord[]> => {
+export const getProductsByArtisan = async (
+  artisanId: string,
+  status: 'published' | 'draft' | 'all' = 'published'
+): Promise<ProductRecord[]> => {
+  let query = supabase
+    .from('products')
+    .select('*')
+    .eq('artisan_id', artisanId);
+
+  if (status !== 'all') {
+    query = query.eq('listing_status', status);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching products:', error);
+    return [];
+  }
+  return data as ProductRecord[];
+};
+
+/**
+ * Buyer-facing product queries explicitly filtered for published listings.
+ * Ensures that even if an artisan views the app in buyer mode, drafts remain hidden.
+ */
+export const getPublishedProducts = async (): Promise<ProductRecord[]> => {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('listing_status', 'published')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching published products:', error);
+    return [];
+  }
+  return data as ProductRecord[];
+};
+
+export const getPublishedProductsByArtisan = async (artisanId: string): Promise<ProductRecord[]> => {
+  return getProductsByArtisan(artisanId, 'published');
+};
+
+export const getDraftProductsByArtisan = async (artisanId: string): Promise<ProductRecord[]> => {
   const { data, error } = await supabase
     .from('products')
     .select('*')
     .eq('artisan_id', artisanId)
-    .order('created_at', { ascending: false });
+    .eq('listing_status', 'draft')
+    .order('updated_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching products:', error);
+    console.error('Error fetching draft products:', error);
     return [];
   }
   return data as ProductRecord[];

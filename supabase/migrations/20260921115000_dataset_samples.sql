@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS dataset_samples (
 ALTER TABLE dataset_samples ENABLE ROW LEVEL SECURITY;
 
 -- Allow authenticated users (internal dev/curator accounts) to view dataset samples
+DROP POLICY IF EXISTS "Authenticated users can read dataset samples" ON dataset_samples;
 CREATE POLICY "Authenticated users can read dataset samples"
   ON dataset_samples
   FOR SELECT
@@ -22,6 +23,7 @@ CREATE POLICY "Authenticated users can read dataset samples"
   USING (true);
 
 -- Allow authenticated users to insert new dataset samples
+DROP POLICY IF EXISTS "Authenticated users can insert dataset samples" ON dataset_samples;
 CREATE POLICY "Authenticated users can insert dataset samples"
   ON dataset_samples
   FOR INSERT
@@ -42,6 +44,7 @@ VALUES ('dataset-raw-photos', 'dataset-raw-photos', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Storage RLS: Authenticated users can upload raw dataset photos
+DROP POLICY IF EXISTS "Authenticated users can upload dataset raw photos" ON storage.objects;
 CREATE POLICY "Authenticated users can upload dataset raw photos"
   ON storage.objects
   FOR INSERT
@@ -49,6 +52,7 @@ CREATE POLICY "Authenticated users can upload dataset raw photos"
   WITH CHECK (bucket_id = 'dataset-raw-photos');
 
 -- Storage RLS: Authenticated users can view dataset raw photos
+DROP POLICY IF EXISTS "Authenticated users can read dataset raw photos" ON storage.objects;
 CREATE POLICY "Authenticated users can read dataset raw photos"
   ON storage.objects
   FOR SELECT
