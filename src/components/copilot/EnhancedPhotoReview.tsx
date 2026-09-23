@@ -25,6 +25,7 @@ export interface EnhancedPhotoReviewProps {
   initialOriginalUrl?: string;
   initialEnhancedUrl?: string;
   initialStatus?: 'pending' | 'processing' | 'enhanced' | 'failed';
+  speakingLanguage?: string | null;
   onComplete?: (chosenUrl: string, choice: 'original' | 'enhanced') => void;
   onCancel?: () => void;
   className?: string;
@@ -49,6 +50,7 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
   initialOriginalUrl = '',
   initialEnhancedUrl = '',
   initialStatus = 'processing',
+  speakingLanguage,
   onComplete,
   onCancel,
   className = '',
@@ -248,7 +250,7 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
           <div>
             <h2 className="text-sm font-bold text-white flex items-center space-x-1.5">
               <Sparkles className="w-4 h-4 text-[#EA580C]" />
-              <span>AI Photo Studio / फोटो समीक्षा</span>
+              <span>{speakingLanguage === 'mr' ? 'AI Photo Studio / फोटो समीक्षा' : 'AI Photo Studio / फोटो समीक्षा'}</span>
             </h2>
             <p className="text-[11px] text-slate-400">
               Stage 1.4: Review & Finalize Catalog Image
@@ -267,10 +269,10 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
           data-testid="status-badge"
         >
           {status === 'enhanced'
-            ? 'Enhanced / संवर्धित'
+            ? (speakingLanguage === 'mr' ? 'Enhanced / सुधारित' : speakingLanguage === 'en' ? 'Enhanced' : 'Enhanced / संवर्धित')
             : status === 'failed'
-            ? 'Failed / विफल'
-            : 'Processing / तैयार हो रहा है'}
+            ? (speakingLanguage === 'mr' ? 'Failed / अयशस्वी' : speakingLanguage === 'en' ? 'Failed' : 'Failed / विफल')
+            : (speakingLanguage === 'mr' ? 'Processing / तयार होत आहे' : speakingLanguage === 'en' ? 'Processing' : 'Processing / तैयार हो रहा है')}
         </span>
       </div>
 
@@ -296,13 +298,17 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
 
             <div className="space-y-1.5 z-10">
               <h3 className="text-sm font-bold text-white tracking-wide">
-                Enhancing your photo... / आपकी फोटो बेहतर बनाई जा रही है
+                {speakingLanguage === 'mr'
+                  ? 'Enhancing your photo... / तुमचा फोटो सुधारित केला जात आहे'
+                  : 'Enhancing your photo... / आपकी फोटो बेहतर बनाई जा रही है'}
               </h3>
               <p className="text-xs text-amber-400/90 font-medium">
                 Removing background & balancing lighting
               </p>
               <p className="text-[11px] text-slate-400 max-w-[260px] mx-auto">
-                पृष्ठभूमि हटाई जा रही है और स्टूडियो रोशनी जोड़ी जा रही है
+                {speakingLanguage === 'mr'
+                  ? 'पार्श्वभूमी काढली जात आहे आणि स्टुडिओ प्रकाश जोडला जात आहे'
+                  : 'पृष्ठभूमि हटाई जा रही है और स्टूडियो रोशनी जोड़ी जा रही है'}
               </p>
             </div>
 
@@ -342,7 +348,13 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
                 data-testid="toggle-enhanced"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-                <span>Enhanced (AI) / संवर्धित</span>
+                <span>
+                  {speakingLanguage === 'mr'
+                    ? 'Enhanced (AI) / सुधारित'
+                    : speakingLanguage === 'en'
+                    ? 'Enhanced (AI)'
+                    : 'Enhanced (AI) / संवर्धित'}
+                </span>
               </button>
 
               <button
@@ -356,7 +368,13 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
                 data-testid="toggle-original"
               >
                 <ImageIcon className="w-3.5 h-3.5 text-slate-300" />
-                <span>Original / मूल</span>
+                <span>
+                  {speakingLanguage === 'mr'
+                    ? 'Original / मूळ'
+                    : speakingLanguage === 'en'
+                    ? 'Original'
+                    : 'Original / मूल'}
+                </span>
               </button>
             </div>
 
@@ -390,19 +408,25 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
                 {activeView === 'enhanced' ? (
                   <>
                     <Sparkles className="w-3 h-3 text-amber-400" />
-                    <span className="text-emerald-300">Studio Enhanced (Clean Background)</span>
+                    <span className="text-emerald-300">
+                      {speakingLanguage === 'mr' ? 'स्टुडिओ सुधारित (स्वच्छ पार्श्वभूमी)' : 'Studio Enhanced (Clean Background)'}
+                    </span>
                   </>
                 ) : (
                   <>
                     <ImageIcon className="w-3 h-3 text-slate-400" />
-                    <span className="text-slate-300">Original Camera Photo</span>
+                    <span className="text-slate-300">
+                      {speakingLanguage === 'mr' ? 'कॅमेरा मूळ फोटो' : 'Original Camera Photo'}
+                    </span>
                   </>
                 )}
               </div>
             </div>
 
             <p className="text-center text-[11px] text-slate-400">
-              Tap toggle above to compare before and after / तुलना करने के लिए ऊपर टैप करें
+              {speakingLanguage === 'mr'
+                ? 'तुलना करण्यासाठी वर टॅप करा / Tap toggle above to compare'
+                : 'Tap toggle above to compare before and after / तुलना करने के लिए ऊपर टैप करें'}
             </p>
           </div>
         )}
@@ -421,13 +445,19 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
 
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-red-200">
-                Enhancement Failed / फोटो संवर्धित नहीं हो सकी
+                {speakingLanguage === 'mr'
+                  ? 'Enhancement Failed / फोटो सुधारित होऊ शकला नाही'
+                  : 'Enhancement Failed / फोटो संवर्धित नहीं हो सकी'}
               </h3>
               <p className="text-xs text-slate-300 max-w-[260px]">
-                Could not automatically remove background or balance lighting.
+                {speakingLanguage === 'mr'
+                  ? 'पार्श्वभूमी स्वयंचलितपणे काढता आली नाही.'
+                  : 'Could not automatically remove background or balance lighting.'}
               </p>
               <p className="text-[11px] text-slate-400">
-                You can retry or continue with the original photo.
+                {speakingLanguage === 'mr'
+                  ? 'तुम्ही पुन्हा प्रयत्न करू शकता किंवा मूळ फोटोसह सुरू ठेवू शकता.'
+                  : 'You can retry or continue with the original photo.'}
               </p>
             </div>
 
@@ -461,7 +491,11 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
               data-testid="use-enhanced-button"
             >
               <CheckCircle2 className="w-4 h-4 text-white" />
-              <span>Use Enhanced Photo / संवर्धित फोटो चुनें</span>
+              <span>
+                {speakingLanguage === 'mr'
+                  ? 'Use Enhanced Photo / सुधारित फोटो वापरा'
+                  : 'Use Enhanced Photo / संवर्धित फोटो चुनें'}
+              </span>
             </button>
 
             {/* Secondary Action: Keep Original Photo */}
@@ -473,7 +507,11 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
               data-testid="use-original-button"
             >
               <Check className="w-3.5 h-3.5 text-slate-400" />
-              <span>Keep Original Photo / मूल फोटो रखें</span>
+              <span>
+                {speakingLanguage === 'mr'
+                  ? 'Keep Original Photo / मूळ फोटो ठेवा'
+                  : 'Keep Original Photo / मूल फोटो रखें'}
+              </span>
             </button>
           </div>
         )}
@@ -489,7 +527,11 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
               data-testid="retry-enhancement-button"
             >
               <RotateCcw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
-              <span>Retry Enhancement / दोबारा कोशिश करें</span>
+              <span>
+                {speakingLanguage === 'mr'
+                  ? 'Retry Enhancement / पुन्हा प्रयत्न करा'
+                  : 'Retry Enhancement / दोबारा कोशिश करें'}
+              </span>
             </button>
 
             {/* Keep Original Photo Fallback */}
@@ -501,14 +543,20 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
               data-testid="keep-original-fallback-button"
             >
               <Check className="w-3.5 h-3.5 text-slate-400" />
-              <span>Keep Original Photo / मूल फोटो रखें</span>
+              <span>
+                {speakingLanguage === 'mr'
+                  ? 'Keep Original Photo / मूळ फोटो ठेवा'
+                  : 'Keep Original Photo / मूल फोटो रखें'}
+              </span>
             </button>
           </div>
         )}
 
         {(status === 'processing' || status === 'pending') && (
           <div className="text-center py-2 text-[11px] text-slate-500 font-medium">
-            Please wait while AI processes your image... / कृपया प्रतीक्षा करें...
+            {speakingLanguage === 'mr'
+              ? 'कृपया प्रतीक्षा करा, फोटोवर प्रक्रिया सुरू आहे... / Please wait...'
+              : 'Please wait while AI processes your image... / कृपया प्रतीक्षा करें...'}
           </div>
         )}
       </div>

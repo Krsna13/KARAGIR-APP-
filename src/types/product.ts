@@ -1,13 +1,18 @@
+import type { NormalizedDimensions } from '../utils/dimensionMerger';
+import type { DimensionKey } from './voice';
+
 export interface ProductRecord {
   id: string; // uuid
   artisan_id: string; // uuid
   item_type?: string | null;
   material?: string | null;
-  dimensions?: {
-    length: number;
-    width: number;
-    height: number;
-  } | null;
+  /**
+   * Stage 6.5: raw dimensions answer, shape-aware. Was an unused
+   * {length,width,height} shape before this stage; nothing to migrate since
+   * that shape was never persisted.
+   */
+  dimensions?: ProductDimensionsRaw | null;
+  normalized_dimensions?: NormalizedDimensions | null;
   price?: number | null;
   image_urls?: string[] | null;
   listing_status: 'draft' | 'published';
@@ -39,6 +44,22 @@ export interface ProductRecord {
   ai_identification?: ProductAiIdentification | null;
   identification_source?: 'ai_confirmed' | 'artisan_corrected' | null;
   identification_photos?: IdentificationPhotos | null;
+
+  // Stage 6.5: Describe step facts (for the listing and the pricing model).
+  technique?: string | null;
+  labor_days?: number | null;
+  availability?: 'ready' | 'made_to_order' | null;
+  quantity_available?: number | null;
+  lead_time_days?: number | null;
+  accepts_customization?: boolean | null;
+  visible_features?: string[] | null;
+  colors?: string[] | null;
+  style?: ProductStyle | null;
+  suggested_use?: string[] | null;
+  story_original?: string | null;
+  story_en?: string | null;
+  care_instructions?: string | null;
+  description_mode?: 'ai_assisted' | 'manual' | null;
 }
 
 /** Which photos the last identification run used (see migration 20260926090000). */
@@ -61,10 +82,18 @@ export interface ProductAiIdentification extends ProductIdentification {
   finish?: ProductFinish;
   complexity?: ProductComplexity;
   complexity_reason?: string;
+  complexity_reason_spoken?: string;
   shape_profile?: ProductShapeProfile;
   item_name_spoken?: string;
   material_spoken?: string;
+  // Stage 6.5
+  visible_features?: string[];
+  colors?: string[];
+  style?: ProductStyle;
+  suggested_use?: string[];
 }
+
+export type ProductStyle = 'traditional' | 'modern' | 'rustic' | 'fusion' | 'unknown';
 
 export type ImageProcessingStatus = 'pending' | 'processing' | 'enhanced' | 'failed';
 export type FinalImageChoice = 'original' | 'enhanced';
@@ -111,4 +140,17 @@ export interface ProductIdentification {
   category: IdentifiedProductCategory;
   confidence: number;
   short_description: string;
+}
+
+// Stage 6.5: shape-aware dimensions raw answer (products.dimensions) and its
+// cm-normalized output (products.normalized_dimensions). See
+// src/utils/dimensionMerger.ts for normalizeDimensions() and the
+// DimensionKey type (also re-exported from src/types/voice.ts).
+export type { NormalizedDimensions };
+
+export interface ProductDimensionsRaw {
+  shape: ProductShapeProfile;
+  values: Partial<Record<DimensionKey, number>>;
+  unit: 'ft' | 'in' | 'cm' | 'm';
+  approximate: boolean;
 }

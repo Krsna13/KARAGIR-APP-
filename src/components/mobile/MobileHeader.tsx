@@ -3,7 +3,6 @@ import { Hammer, MapPin, ChevronDown, ShieldCheck } from 'lucide-react';
 import type { AppMode, LocationPin } from '../../types';
 import { useKaragirStore } from '../../context/KaragirStoreContext';
 
-import { AIDevBackendToggle } from '../dev/AIDevBackendToggle';
 
 interface MobileHeaderProps {
   mode: AppMode;
@@ -76,9 +75,8 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
       </button>
 
-      {/* Right Controls: Mode Switcher, Dev AI Toggle & Avatar */}
+      {/* Right Controls: Mode Switcher & Avatar */}
       <div className="flex items-center space-x-1.5">
-        {import.meta.env.DEV && <AIDevBackendToggle />}
         <button
           onClick={handleToggleMode}
           className={`flex items-center space-x-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
