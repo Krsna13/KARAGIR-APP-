@@ -60,6 +60,36 @@ export interface ProductRecord {
   story_en?: string | null;
   care_instructions?: string | null;
   description_mode?: 'ai_assisted' | 'manual' | null;
+
+  // Stage 6.6: Preview step (Listing writer and buyer preview)
+  title_en?: string | null;
+  title_hi?: string | null;
+  seo_caption_en?: string | null;
+  seo_caption_hi?: string | null;
+  highlights_en?: string[] | null;
+  highlights_hi?: string[] | null;
+  search_tags?: string[] | null;
+  extra_notes_original?: string | null;
+  extra_notes_en?: string | null;
+  listing_generated_at?: string | null;
+  listing_facts_hash?: string | null;
+  listing_approved?: boolean | null;
+  summary_spoken?: string | null;
+}
+
+export type ListingSection = 'title' | 'caption' | 'highlights' | 'description';
+
+export interface ListingResult {
+  title_en: string;
+  title_hi: string;
+  seo_caption_en: string;
+  seo_caption_hi: string;
+  highlights_en: string[];
+  highlights_hi: string[];
+  description_en: string;
+  description_hi: string;
+  search_tags: string[];
+  summary_spoken: string;
 }
 
 /** Which photos the last identification run used (see migration 20260926090000). */

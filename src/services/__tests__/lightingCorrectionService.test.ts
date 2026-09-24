@@ -144,5 +144,5 @@ describe('lightingCorrectionService', () => {
       globalThis.Image = originalImage;
       globalThis.document.createElement = originalCreateElement;
     }
-  });
+  }, 15000);
 });

@@ -19,6 +19,7 @@ import { SUPPORTED_LANGUAGES, speakLanguageName } from '../../../config/language
 import { PhotosStep } from './steps/PhotosStep';
 import { IdentifyStep } from './steps/IdentifyStep';
 import { DescribeStep } from './steps/DescribeStep';
+import { PreviewStep } from './steps/PreviewStep';
 
 interface AddItemWizardProps {
   artisanId: string;
@@ -48,6 +49,7 @@ interface WizardTranslation {
   photosRequiredHint: string;
   identifyRequiredHint: string;
   describeRequiredHint: string;
+  previewRequiredHint: string;
 }
 
 const WIZARD_TRANSLATIONS: Record<'hi' | 'mr' | 'en', WizardTranslation> = {
@@ -62,6 +64,7 @@ const WIZARD_TRANSLATIONS: Record<'hi' | 'mr' | 'en', WizardTranslation> = {
     photosRequiredHint: 'Add at least 1 photo / किमान 1 फोटो जोडा',
     identifyRequiredHint: 'Answer all 5 questions / सर्व 5 प्रश्नांची उत्तरे द्या',
     describeRequiredHint: 'Finish size, technique, time & availability / आकार, तंत्र, वेळ आणि उपलब्धता पूर्ण करा',
+    previewRequiredHint: 'Approve your listing to proceed / पुढे जाण्यासाठी सूची मंजूर करा',
   },
   hi: {
     addItemTitle: 'Add Item / नया आइटम जोड़ें',
@@ -74,6 +77,7 @@ const WIZARD_TRANSLATIONS: Record<'hi' | 'mr' | 'en', WizardTranslation> = {
     photosRequiredHint: 'Add at least 1 photo / कम से कम 1 फोटो जोड़ें',
     identifyRequiredHint: 'Answer all 5 questions / सभी 5 सवालों के जवाब दें',
     describeRequiredHint: 'Finish size, technique, time & availability / आकार, तकनीक, समय और उपलब्धता पूरी करें',
+    previewRequiredHint: 'Approve your listing to proceed / आगे बढ़ने के लिए विवरण स्वीकार करें',
   },
   en: {
     addItemTitle: 'Add Item',
@@ -86,6 +90,7 @@ const WIZARD_TRANSLATIONS: Record<'hi' | 'mr' | 'en', WizardTranslation> = {
     photosRequiredHint: 'Add at least 1 photo',
     identifyRequiredHint: 'Answer all 5 questions',
     describeRequiredHint: 'Finish size, technique, time & availability',
+    previewRequiredHint: 'Approve your listing to proceed',
   },
 };
 
@@ -337,6 +342,14 @@ export const AddItemWizard: React.FC<AddItemWizardProps> = ({
           speakingLanguage={selectedLanguage}
           onDraftPatch={patchDraft}
         />
+      ) : currentStep === 3 && draftProduct ? (
+        <PreviewStep
+          productId={draftProduct.id}
+          draft={draftProduct}
+          speakingLanguage={selectedLanguage}
+          onDraftPatch={patchDraft}
+          artisanId={artisanId}
+        />
       ) : (
       /* Step Placeholder Content Panel (Stage 6.1 Skeleton for Steps 2-5) */
       <div className="py-10 px-4 sm:px-8 flex flex-col items-center justify-center border-2 border-dashed border-[#2A1E17] bg-[#120B08]/70 rounded-2xl text-center space-y-3 shadow-inner min-h-[220px]">
@@ -425,6 +438,13 @@ export const AddItemWizard: React.FC<AddItemWizardProps> = ({
         <p className="text-[11px] text-slate-400 text-center -mt-3" data-testid="describe-required-hint">
           <FileText className="inline w-3.5 h-3.5 text-[#EA580C] mr-1" />
           {t.describeRequiredHint}
+        </p>
+      )}
+
+      {currentStep === 3 && !canGoNext && (
+        <p className="text-[11px] text-slate-400 text-center -mt-3" data-testid="preview-required-hint">
+          <Eye className="inline w-3.5 h-3.5 text-[#EA580C] mr-1" />
+          {t.previewRequiredHint}
         </p>
       )}
 

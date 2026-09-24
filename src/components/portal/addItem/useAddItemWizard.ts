@@ -10,6 +10,7 @@ import {
 import * as storageService from '../../../services/storageService';
 import { isIdentifyStepComplete } from './steps/identifyLogic';
 import { describeAnswersFromDraft, isDescribeStepComplete } from './steps/describeLogic';
+import { canProceedPreview } from './steps/listingLogic';
 
 export interface UseAddItemWizardProps {
   artisanId: string;
@@ -106,6 +107,8 @@ export const useAddItemWizard = ({
       if (step === 1) return isIdentifyStepComplete(draftProduct);
       // Step 2 (Describe): dimensions, technique, labor_days, availability + matching count.
       if (step === 2) return isDescribeStepComplete(describeAnswersFromDraft(draftProduct), draftProduct?.shape_profile ?? null);
+      // Step 3 (Preview): listing present and listing_approved is true.
+      if (step === 3) return canProceedPreview(draftProduct);
       return true;
     },
     [uploadedPhotoCount, draftProduct]
