@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
+    "build:android": "node scripts/build-android.js",
     "seed:market-data": "node scripts/seedMarketListings.ts"
   },
   "dependencies": {

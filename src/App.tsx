@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import type { AppMode, LocationPin, Artisan, Product, ProductItem } from './types';
 import { NASHIK_LOCALITIES, MOCK_ARTISANS } from './data/mockData';
 import { FindLocalArtisansPage } from './components/FindLocalArtisansPage';
@@ -18,8 +18,19 @@ import { EscrowProvider } from './context/EscrowContext';
 import { MobileAppShell } from './components/mobile/MobileAppShell';
 import { MobileHome } from './components/mobile/MobileHome';
 import { MobileStatusBar } from './components/mobile/MobileStatusBar';
-import { DatasetCollector } from './components/dev/DatasetCollector';
-import { DevVoiceInputPage } from './components/dev/DevVoiceInputPage';
+import { isDevToolsEnabled, getActiveDevRoute } from './config/devTools';
+
+const DatasetCollector = isDevToolsEnabled
+  ? lazy(() => import('./components/dev/DatasetCollector').then(m => ({ default: m.DatasetCollector })))
+  : null;
+
+const DevVoiceInputPage = isDevToolsEnabled
+  ? lazy(() => import('./components/dev/DevVoiceInputPage').then(m => ({ default: m.DevVoiceInputPage })))
+  : null;
+
+const DevDeviceCheckPage = isDevToolsEnabled
+  ? lazy(() => import('./components/dev/DevDeviceCheckPage').then(m => ({ default: m.DevDeviceCheckPage })))
+  : null;
 
 function AppContent() {
   const [mode, setMode] = useState<AppMode>('buyer');
@@ -29,32 +40,17 @@ function AppContent() {
   const [activeReelArtisan, setActiveReelArtisan] = useState<Artisan | null>(null);
   const [selectedProductForCustomization, setSelectedProductForCustomization] = useState<Product | ProductItem | null>(null);
 
-  // Dev-only route detection: e.g. /dev/dataset-collector or /dev/voice-input
-  const [isDevDatasetCollector, setIsDevDatasetCollector] = useState<boolean>(() => {
-    if (!import.meta.env.DEV) return false;
-    const path = window.location.pathname.toLowerCase();
-    const hash = window.location.hash.toLowerCase();
-    return path.includes('/dev/dataset-collector') || hash.includes('/dev/dataset-collector');
-  });
-
-  const [isDevVoiceInput, setIsDevVoiceInput] = useState<boolean>(() => {
-    if (!import.meta.env.DEV) return false;
-    const path = window.location.pathname.toLowerCase();
-    const hash = window.location.hash.toLowerCase();
-    return path.includes('/dev/voice-input') || hash.includes('/dev/voice-input');
+  // Dev-only route detection: e.g. /dev/device-check, /dev/voice-input, or /dev/dataset-collector
+  // Gated by VITE_ENABLE_DEV_TOOLS (or DEV mode in local dev server).
+  // Production web builds must never include or activate them.
+  const [devRoute, setDevRoute] = useState<ReturnType<typeof getActiveDevRoute>>(() => {
+    return getActiveDevRoute(window.location.pathname, window.location.hash);
   });
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    if (!isDevToolsEnabled) return;
     const handleLocationChange = () => {
-      const path = window.location.pathname.toLowerCase();
-      const hash = window.location.hash.toLowerCase();
-      setIsDevDatasetCollector(
-        path.includes('/dev/dataset-collector') || hash.includes('/dev/dataset-collector')
-      );
-      setIsDevVoiceInput(
-        path.includes('/dev/voice-input') || hash.includes('/dev/voice-input')
-      );
+      setDevRoute(getActiveDevRoute(window.location.pathname, window.location.hash));
     };
 
     window.addEventListener('popstate', handleLocationChange);
@@ -65,38 +61,39 @@ function AppContent() {
     };
   }, []);
 
-  if (import.meta.env.DEV && isDevDatasetCollector) {
-    return (
-      <div className="min-h-screen bg-[#0A0604] text-white flex flex-col items-center justify-center selection:bg-[#EA580C] selection:text-white w-full sm:py-4">
-        {/* Smartphone Chassis Screen Container */}
-        <div className="w-full max-w-[430px] h-[100dvh] sm:h-[92vh] sm:max-h-[890px] bg-[#120B08] flex flex-col relative sm:rounded-[44px] sm:border-[7px] sm:border-[#2A1E17] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),0_0_40px_rgba(234,88,12,0.18)] overflow-hidden">
-          <MobileStatusBar />
-          <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar relative">
-            <DatasetCollector
-              onBack={() => {
-                window.history.pushState(null, '', '/');
-                setIsDevDatasetCollector(false);
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (isDevToolsEnabled && devRoute) {
+    const handleBack = () => {
+      window.history.pushState(null, '', '/');
+      setDevRoute(null);
+    };
 
-  if (import.meta.env.DEV && isDevVoiceInput) {
     return (
       <div className="min-h-screen bg-[#0A0604] text-white flex flex-col items-center justify-center selection:bg-[#EA580C] selection:text-white w-full sm:py-4">
         {/* Smartphone Chassis Screen Container */}
         <div className="w-full max-w-[430px] h-[100dvh] sm:h-[92vh] sm:max-h-[890px] bg-[#120B08] flex flex-col relative sm:rounded-[44px] sm:border-[7px] sm:border-[#2A1E17] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),0_0_40px_rgba(234,88,12,0.18)] overflow-hidden">
           <MobileStatusBar />
           <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar relative">
-            <DevVoiceInputPage
-              onBack={() => {
-                window.history.pushState(null, '', '/');
-                setIsDevVoiceInput(false);
-              }}
-            />
+            <Suspense fallback={
+              <div className="min-h-full flex items-center justify-center text-xs text-stone-500 font-mono">
+                Loading dev tool...
+              </div>
+            }>
+              {devRoute === 'dataset-collector' && DatasetCollector && (
+                <DatasetCollector onBack={handleBack} />
+              )}
+              {devRoute === 'voice-input' && DevVoiceInputPage && (
+                <DevVoiceInputPage onBack={handleBack} />
+              )}
+              {devRoute === 'device-check' && DevDeviceCheckPage && (
+                <DevDeviceCheckPage
+                  onBack={handleBack}
+                  onNavigateToVoiceInput={() => {
+                    window.history.pushState(null, '', '/dev/voice-input');
+                    setDevRoute('voice-input');
+                  }}
+                />
+              )}
+            </Suspense>
           </div>
         </div>
       </div>
