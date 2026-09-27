@@ -25,8 +25,18 @@ import {
   ProductImageLimitError,
 } from '../../../../services/productImageService';
 import { enhancementQueue } from '../../../../services/imageProcessingQueue';
-import { getProductImageDisplayUrl } from '../../../../services/imageEnhancementService';
-import { MAX_PRODUCT_IMAGES, type ProductImage } from '../../../../types/product';
+import { supabase } from '../../../../lib/supabase/client';
+import { speakText } from '../../../../config/languages';
+import {
+  PHOTO_BACKGROUND_OPTIONS,
+  type PhotoBackground,
+  type PhotoBackgroundOption,
+} from '../../../../types/imageEnhancement';
+import {
+  getProductImageDisplayUrl,
+  updateProductBackground,
+} from '../../../../services/imageEnhancementService';
+import { MAX_PRODUCT_IMAGES, type ProductImage, type QualityWarning } from '../../../../types/product';
 
 export interface PhotosStepProps {
   productId: string;
@@ -75,6 +85,29 @@ const PHOTO_TIPS = [
   { icon: ZoomIn, en: 'Close-up', hi: 'नज़दीक से', mr: 'जवळून' },
 ];
 
+const WARNING_DETAILS: Record<QualityWarning, { en: string; hi: string; speech: string }> = {
+  blurry: {
+    en: 'This photo is blurry. Please take it again',
+    hi: 'यह फोटो धुंधली है। कृपया फिर से खींचें',
+    speech: 'This photo is blurry. Please take it again / यह फोटो धुंधली है। कृपया फिर से खींचें',
+  },
+  dark: {
+    en: 'This photo is too dark. Please take it in better light',
+    hi: 'यह फोटो बहुत गहरी है। कृपया बेहतर रोशनी में खींचें',
+    speech: 'This photo is too dark. Please take it in better light / यह फोटो बहुत गहरी है। कृपया बेहतर रोशनी में खींचें',
+  },
+  overexposed: {
+    en: 'This photo is too bright / overexposed',
+    hi: 'यह फोटो बहुत तेज़ रोशनी वाली है',
+    speech: 'This photo is too bright / यह फोटो बहुत तेज़ रोशनी वाली है',
+  },
+  low_resolution: {
+    en: 'Photo resolution is low. Please take a clearer photo',
+    hi: 'फोटो का रिज़ॉल्यूशन कम है। कृपया साफ फोटो लें',
+    speech: 'Photo resolution is low / फोटो का रिज़ॉल्यूशन कम है। कृपया साफ फोटो लें',
+  },
+};
+
 const sortByPosition = (images: ProductImage[]) => [...images].sort((a, b) => a.position - b.position);
 
 /**
@@ -85,10 +118,14 @@ export const PhotosStep: React.FC<PhotosStepProps> = ({ productId, artisanId, sp
   const [images, setImages] = useState<ProductImage[]>([]);
   const [uploading, setUploading] = useState<{ position: number; previewUrl: string } | null>(null);
   const [sheetPosition, setSheetPosition] = useState<number | null>(null);
+  const activePositionRef = useRef<number | null>(null);
   const [reviewImageId, setReviewImageId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ProductImage | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [currentBackground, setCurrentBackground] = useState<PhotoBackground>('white');
+  const [isChangingBg, setIsChangingBg] = useState(false);
+  const [warningDialog, setWarningDialog] = useState<{ image: ProductImage; warning: QualityWarning; position: number } | null>(null);
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -118,6 +155,11 @@ export const PhotosStep: React.FC<PhotosStepProps> = ({ productId, artisanId, sp
             patchImage(imageId, {
               image_processing_status: 'enhanced',
               enhanced_image_url: result.enhancedImageUrl ?? null,
+              cutout_image_url: (result as any).cutoutImageUrl ?? null,
+              enhancement_mode: result.enhancement_mode,
+              quality_warnings: result.quality_warnings,
+              mask_coverage: (result as any).mask_coverage,
+              processing_log: result.processing_log,
             });
           } else {
             patchImage(imageId, { image_processing_status: 'failed' });
@@ -143,10 +185,55 @@ export const PhotosStep: React.FC<PhotosStepProps> = ({ productId, artisanId, sp
         console.error('[PhotosStep] Could not load photos:', err);
         if (!cancelled) setErrorText('Could not load photos / फोटो लोड नहीं हुईं');
       });
+
+    // Also fetch product photo_background
+    supabase
+      .from('products')
+      .select('photo_background')
+      .eq('id', productId)
+      .maybeSingle()
+      .then(
+        ({ data }) => {
+          if (!cancelled && mountedRef.current && (data as any)?.photo_background) {
+            setCurrentBackground((data as any).photo_background as PhotoBackground);
+          }
+        },
+        () => {}
+      );
+
     return () => {
       cancelled = true;
     };
   }, [productId, startEnhancement]);
+
+  const handleBackgroundChange = async (option: PhotoBackgroundOption) => {
+    if (currentBackground === option.id || isChangingBg) return;
+    speakText(
+      speakingLanguage === 'mr' ? option.label_hi : option.speech_hi,
+      speakingLanguage || 'hi'
+    );
+    setCurrentBackground(option.id);
+    setIsChangingBg(true);
+    try {
+      await updateProductBackground(productId, option.id);
+      const updated = await listProductImages(productId);
+      if (mountedRef.current) setImages(sortByPosition(updated));
+    } catch (err) {
+      console.error('[PhotosStep] Failed to update background:', err);
+    } finally {
+      if (mountedRef.current) setIsChangingBg(false);
+    }
+  };
+
+  const handleOpenWarning = (image: ProductImage, warning: QualityWarning, position: number) => {
+    const details = WARNING_DETAILS[warning] || {
+      en: 'Photo quality check recommendation',
+      hi: 'फोटो गुणवत्ता सिफारिश',
+      speech: 'Please review photo quality / कृपया फोटो गुणवत्ता जांचें',
+    };
+    speakText(details.speech, speakingLanguage || 'hi');
+    setWarningDialog({ image, warning, position });
+  };
 
   useEffect(() => {
     onUploadedCountChange?.(images.length);
@@ -155,8 +242,21 @@ export const PhotosStep: React.FC<PhotosStepProps> = ({ productId, artisanId, sp
   const isFull = images.length >= MAX_PRODUCT_IMAGES;
 
   const handlePhotoSelected = async (blob: Blob, previewUrl: string) => {
-    const position = sheetPosition;
+    let position = sheetPosition;
+    if (position === null && activePositionRef.current !== null) {
+      position = activePositionRef.current;
+    }
+    if (position === null) {
+      const taken = new Set(images.map((img) => img.position));
+      for (let pos = 0; pos < MAX_PRODUCT_IMAGES; pos++) {
+        if (!taken.has(pos)) {
+          position = pos;
+          break;
+        }
+      }
+    }
     setSheetPosition(null);
+    activePositionRef.current = null;
     if (position === null) return;
     if (isFull) {
       setErrorText(
@@ -314,6 +414,61 @@ export const PhotosStep: React.FC<PhotosStepProps> = ({ productId, artisanId, sp
         </div>
       )}
 
+      {/* Background picker above the grid */}
+      <div className="p-3 rounded-2xl bg-[#120B08] border border-[#2A1E17] space-y-2" data-testid="background-picker">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-bold text-white flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-[#EA580C]" />
+            <span>Studio Background / पृष्ठभूमि</span>
+          </span>
+          <span className="text-[10px] text-slate-400">
+            {isChangingBg
+              ? (speakingLanguage === 'mr' ? 'अपडेट होत आहे...' : 'अपडेट हो रहा है...')
+              : (speakingLanguage === 'mr' ? 'सर्व फोटोंवर लागू' : 'सभी फोटो पर लागू')}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-4 gap-2">
+          {PHOTO_BACKGROUND_OPTIONS.map((opt) => {
+            const isSelected = currentBackground === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                disabled={isChangingBg}
+                onClick={() => handleBackgroundChange(opt)}
+                className={`flex flex-col items-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                  isSelected
+                    ? 'border-[#EA580C] bg-[#EA580C]/15 ring-1 ring-[#EA580C]'
+                    : 'border-[#2A1E17] bg-[#1A120E] hover:border-[#3A2A20]'
+                }`}
+                data-testid={`bg-option-${opt.id}`}
+                aria-pressed={isSelected}
+              >
+                <div
+                  className={`w-7 h-7 rounded-full border border-black/40 shadow-sm mb-1 flex items-center justify-center ${
+                    opt.id === 'original'
+                      ? 'bg-gradient-to-br from-stone-700 via-stone-800 to-black border-dashed'
+                      : ''
+                  }`}
+                  style={opt.id !== 'original' ? { backgroundColor: opt.colorHex } : undefined}
+                >
+                  {isSelected && (
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#EA580C]" />
+                  )}
+                </div>
+                <span className="text-[11px] font-bold text-white leading-tight">
+                  {opt.label_en}
+                </span>
+                <span className="text-[9px] text-slate-400 leading-tight">
+                  {opt.label_hi}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Five photo slots */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         {slots.map((position) => {
@@ -328,6 +483,7 @@ export const PhotosStep: React.FC<PhotosStepProps> = ({ productId, artisanId, sp
                 disabled={isFull || uploading !== null}
                 onClick={() => {
                   setErrorText(null);
+                  activePositionRef.current = position;
                   setSheetPosition(position);
                 }}
                 className="relative aspect-square min-h-[48px] rounded-2xl border-2 border-dashed border-[#3A2A20] hover:border-[#EA580C] bg-[#120B08] flex flex-col items-center justify-center gap-1.5 text-slate-300 transition-all active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
@@ -348,6 +504,7 @@ export const PhotosStep: React.FC<PhotosStepProps> = ({ productId, artisanId, sp
           const status: SlotStatus = image ? image.image_processing_status : 'uploading';
           const thumbnail = image ? getProductImageDisplayUrl(image) : uploading?.previewUrl ?? '';
           const isBusy = status === 'uploading' || status === 'pending' || status === 'processing';
+          const hasWarning = Boolean(image?.quality_warnings && image.quality_warnings.length > 0);
 
           return (
             <div
@@ -387,6 +544,30 @@ export const PhotosStep: React.FC<PhotosStepProps> = ({ productId, artisanId, sp
                 <span className="truncate">{getStatusCopy(status, speakingLanguage)}</span>
               </div>
 
+              {/* AI Studio indicator on enhanced photos */}
+              {status === 'enhanced' && (
+                <div
+                  className="absolute top-2 right-2 z-10 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/75 border border-white/20 backdrop-blur-sm text-[9px] font-bold text-amber-300 pointer-events-none shadow"
+                  data-testid={`ai-studio-badge-${position}`}
+                >
+                  <Sparkles className="w-2.5 h-2.5 text-[#EA580C]" />
+                  <span>AI Studio</span>
+                </div>
+              )}
+
+              {/* Quality warning badge */}
+              {hasWarning && image && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenWarning(image, image.quality_warnings![0], position)}
+                  className="absolute bottom-8 right-2 z-20 w-7 h-7 rounded-full bg-amber-500 hover:bg-amber-400 text-black flex items-center justify-center shadow-lg active:scale-95 cursor-pointer"
+                  data-testid={`warning-badge-${position}`}
+                  aria-label="Quality warning / गुणवत्ता चेतावनी"
+                >
+                  <AlertCircle className="w-4 h-4 text-black" />
+                </button>
+              )}
+
               {image && (
                 <>
                   {/* Cover star (top-left) */}
@@ -413,25 +594,40 @@ export const PhotosStep: React.FC<PhotosStepProps> = ({ productId, artisanId, sp
                     </span>
                   </button>
 
-                  {/* Delete (top-right) */}
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(image)}
-                    className="absolute top-0 right-0 w-12 h-12 flex items-center justify-center"
-                    data-testid={`delete-photo-${position}`}
-                    aria-label={speakingLanguage === 'mr' ? 'Delete photo / फोटो हटवा' : 'Delete photo / फोटो हटाएं'}
-                  >
-                    <span className="w-8 h-8 rounded-full bg-black/70 border border-white/30 text-white flex items-center justify-center shadow">
-                      <Trash2 className="w-4 h-4" />
-                    </span>
-                  </button>
+                  {/* Delete (top-right, only when not covered by AI Studio or top is free) */}
+                  {status !== 'enhanced' && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(image)}
+                      className="absolute top-0 right-0 w-12 h-12 flex items-center justify-center"
+                      data-testid={`delete-photo-${position}`}
+                      aria-label={speakingLanguage === 'mr' ? 'Delete photo / फोटो हटवा' : 'Delete photo / फोटो हटाएं'}
+                    >
+                      <span className="w-8 h-8 rounded-full bg-black/70 border border-white/30 text-white flex items-center justify-center shadow">
+                        <Trash2 className="w-4 h-4" />
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Delete for enhanced photo (bottom-left) */}
+                  {status === 'enhanced' && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(image)}
+                      className="absolute bottom-8 left-2 z-20 w-7 h-7 rounded-full bg-black/70 border border-white/30 text-white flex items-center justify-center shadow hover:bg-black cursor-pointer"
+                      data-testid={`delete-photo-${position}`}
+                      aria-label={speakingLanguage === 'mr' ? 'Delete photo / फोटो हटवा' : 'Delete photo / फोटो हटाएं'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
 
                   {/* Retry after failed enhancement */}
                   {status === 'failed' && (
                     <button
                       type="button"
                       onClick={() => startEnhancement(image.id)}
-                      className="absolute inset-x-0 top-1/2 -translate-y-1/2 mx-auto w-14 h-14 rounded-full bg-[#EA580C] text-white flex items-center justify-center shadow-lg active:scale-95"
+                      className="absolute inset-x-0 top-1/2 -translate-y-1/2 mx-auto w-14 h-14 rounded-full bg-[#EA580C] text-white flex items-center justify-center shadow-lg active:scale-95 cursor-pointer"
                       data-testid={`retry-photo-${position}`}
                       aria-label={speakingLanguage === 'mr' ? 'Retry enhancement / पुन्हा प्रयत्न करा' : 'Retry enhancement / दोबारा कोशिश करें'}
                     >
@@ -518,6 +714,65 @@ export const PhotosStep: React.FC<PhotosStepProps> = ({ productId, artisanId, sp
               >
                 {isDeleting ? <LoaderCircle className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 {speakingLanguage === 'mr' ? 'Yes, delete / होय, हटवा' : 'Yes, delete / हाँ, हटाएं'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quality warning dialog with Retake */}
+      {warningDialog && (
+        <div
+          className="fixed inset-0 z-[1300] bg-black/75 flex items-end sm:items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          data-testid="quality-warning-dialog"
+        >
+          <div className="w-full max-w-sm bg-[#1A120E] border border-amber-500/30 rounded-3xl p-5 space-y-4 text-center shadow-2xl">
+            <div className="w-14 h-14 mx-auto rounded-full bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-400">
+              <AlertCircle className="w-7 h-7" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-white">
+                {WARNING_DETAILS[warningDialog.warning]?.en || 'Photo quality recommendation'}
+              </p>
+              <p className="text-sm font-bold text-amber-300">
+                {WARNING_DETAILS[warningDialog.warning]?.hi || 'फोटो गुणवत्ता सिफारिश'}
+              </p>
+              <p className="text-[11px] text-slate-400">
+                {speakingLanguage === 'mr'
+                  ? 'तुम्ही ही फोटो ठेवू शकता किंवा पुन्हा काढू शकता'
+                  : 'You can keep this photo or retake it / आप यह फोटो रख सकते हैं या दोबारा ले सकते हैं'}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setWarningDialog(null)}
+                className="min-h-[48px] rounded-xl bg-[#120B08] border border-[#2A1E17] text-slate-200 text-xs font-bold active:scale-95 cursor-pointer"
+                data-testid="dismiss-warning-button"
+              >
+                {speakingLanguage === 'mr' ? 'Keep photo / ठेवा' : 'Keep photo / रहने दें'}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const { image, position } = warningDialog;
+                  setWarningDialog(null);
+                  try {
+                    await deleteProductImage(image);
+                    setImages((prev) => prev.filter((img) => img.id !== image.id));
+                  } catch (err) {
+                    console.error('[PhotosStep] Could not delete photo for retake:', err);
+                  }
+                  activePositionRef.current = position;
+                  setSheetPosition(position);
+                }}
+                className="min-h-[48px] rounded-xl bg-[#EA580C] hover:bg-[#F97316] text-white text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                data-testid="retake-warning-button"
+              >
+                <Camera className="w-4 h-4" />
+                {speakingLanguage === 'mr' ? 'Retake / पुन्हा काढा' : 'Retake / फिर से खींचें'}
               </button>
             </div>
           </div>

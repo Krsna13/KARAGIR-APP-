@@ -73,3 +73,11 @@ graph TD
 - **`MaterialContext.tsx`**: Handles active material slot selections, wood types, brass accents, and finishes for the 3D model.
 - **`KaragirStoreContext.tsx`**: Manages artisan login sessions, store configurations, and product catalog states.
 - **`EscrowContext.tsx`**: Manages order milestones, proof verification states, and digital vault payouts.
+
+## 4. AI-Assisted Artisan Catalog Pipeline (`src/components/portal/addItem/`)
+- **`AddItemWizard.tsx`**: Multi-step progressive flow for cataloging artisan products (Photos → Identify → Describe → Preview).
+- **`IdentifyStep.tsx`**: Gemini Vision-assisted identification with spoken feedback and quick-pick correction chips.
+- **`DescribeStep.tsx`**: Voice-driven extraction of physical dimensions, artisan technique, lead times, and heritage stories.
+- **`PreviewStep.tsx` & `ListingPreviewCard.tsx`**: Bilingual (EN/HI) listing generator, spoken summary reader, section-by-section voice revision, facts hash change detection, and deterministic simple listing fallback.
+- **Edge Functions (`generate-listing`)**: Strict anti-hallucination validation, permitted number extraction (dimensions, price, artisan story, visible features), and risky marketing claim protection with automatic retry.
+

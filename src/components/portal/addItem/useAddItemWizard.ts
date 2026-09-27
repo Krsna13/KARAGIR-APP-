@@ -17,6 +17,7 @@ export interface UseAddItemWizardProps {
   speakingLanguage?: string | null;
   initialDraft?: ProductRecord | null;
   onExit: (savedMessage?: string | null) => void;
+  onPublish?: (draft: ProductRecord) => void;
   onLanguageSelected?: (lang: string) => void;
 }
 
@@ -34,6 +35,7 @@ export const useAddItemWizard = ({
   speakingLanguage: initialLanguage,
   initialDraft,
   onExit,
+  onPublish,
   onLanguageSelected,
 }: UseAddItemWizardProps) => {
   // If speaking_language is null/undefined/empty, start on 'language_picker'
@@ -197,6 +199,36 @@ export const useAddItemWizard = ({
     }, 400);
   };
 
+  // Publish Wizard
+  const handlePublish = async () => {
+    if (!draftProduct?.id) return;
+    setIsLoading(true);
+    try {
+      // Flush pending saves and mark as published
+      await debouncedSaveDraft.flush(draftProduct.id);
+      const updated = await saveDraft(draftProduct.id, { 
+        listing_status: 'published',
+        wizard_step: 0 
+      });
+      if (updated) {
+        setDraftProduct(updated);
+        // Call onPublish to inform parent component
+        onPublish?.(updated);
+        onExit('Product Published Successfully! / उत्पाद सफलतापूर्वक प्रकाशित हुआ!');
+      } else {
+        // Fallback if saveDraft fails to return an object but succeeded locally
+        const local = { ...draftProduct, listing_status: 'published' } as ProductRecord;
+        onPublish?.(local);
+        onExit('Product Published Successfully! / उत्पाद सफलतापूर्वक प्रकाशित हुआ!');
+      }
+    } catch (err) {
+      console.error('Publish failed:', err);
+      setExitNotification('Failed to publish. Try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     isLanguageStep,
     selectedLanguage,
@@ -212,6 +244,7 @@ export const useAddItemWizard = ({
     handleNext,
     handleBack,
     handleExit,
+    handlePublish,
     setCurrentStep,
     setDraftProduct,
   };

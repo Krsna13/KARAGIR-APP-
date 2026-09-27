@@ -19,6 +19,7 @@
 --   - listing_generated_at TIMESTAMPTZ
 --   - listing_facts_hash TEXT
 --   - listing_approved BOOLEAN DEFAULT FALSE
+--   - summary_spoken TEXT
 
 ALTER TABLE products ADD COLUMN IF NOT EXISTS title_en TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS title_hi TEXT;
@@ -32,3 +33,4 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS extra_notes_en TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS listing_generated_at TIMESTAMPTZ;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS listing_facts_hash TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS listing_approved BOOLEAN DEFAULT FALSE;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS summary_spoken TEXT;

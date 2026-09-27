@@ -1,7 +1,7 @@
-// src/hooks/useImageCapture.ts
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Camera, CameraResultType, CameraSource, type PermissionStatus } from '@capacitor/camera';
+import { LiveCameraView } from '../components/camera/LiveCameraView';
 
 export interface CaptureError {
   type: 'permission' | 'upload' | 'device' | 'invalid_type';
@@ -24,6 +24,10 @@ export interface UseImageCaptureReturn {
   errorInfo: CaptureError | null;
   clearError: () => void;
   isNative: boolean;
+  isLiveCameraOpen: boolean;
+  closeLiveCamera: () => void;
+  fallbackToFileCamera: () => void;
+  liveCameraElement: React.ReactNode;
 }
 
 /**
@@ -177,9 +181,30 @@ export function useImageCapture(options?: UseImageCaptureOptions): UseImageCaptu
     [handleBlobReady, reportError]
   );
 
+  const [isLiveCameraOpen, setIsLiveCameraOpen] = useState<boolean>(false);
+
+  const closeLiveCamera = useCallback(() => {
+    setIsLiveCameraOpen(false);
+  }, []);
+
+  const fallbackToFileCamera = useCallback(() => {
+    setIsLiveCameraOpen(false);
+    cameraInputRef.current?.click();
+  }, []);
+
+  const handleLiveCameraCapture = useCallback(
+    (blob: Blob, url: string) => {
+      setIsLiveCameraOpen(false);
+      handleBlobReady(blob, url);
+    },
+    [handleBlobReady]
+  );
+
   const captureFromCamera = useCallback(async () => {
     if (isNative) {
       await captureNative(CameraSource.Camera);
+    } else if (typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getUserMedia === 'function') {
+      setIsLiveCameraOpen(true);
     } else {
       cameraInputRef.current?.click();
     }
@@ -193,6 +218,14 @@ export function useImageCapture(options?: UseImageCaptureOptions): UseImageCaptu
     }
   }, [captureNative, isNative]);
 
+  const liveCameraElement = isLiveCameraOpen
+    ? React.createElement(LiveCameraView, {
+        onCapture: handleLiveCameraCapture,
+        onCancel: closeLiveCamera,
+        onFallbackToFile: fallbackToFileCamera,
+      })
+    : null;
+
   return {
     captureFromCamera,
     captureFromGallery,
@@ -203,5 +236,9 @@ export function useImageCapture(options?: UseImageCaptureOptions): UseImageCaptu
     errorInfo,
     clearError,
     isNative,
+    isLiveCameraOpen,
+    closeLiveCamera,
+    fallbackToFileCamera,
+    liveCameraElement,
   };
 }

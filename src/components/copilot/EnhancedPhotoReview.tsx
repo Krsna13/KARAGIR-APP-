@@ -14,6 +14,8 @@ import { supabase } from '../../lib/supabase/client';
 import { processProductImage } from '../../services/imageEnhancementService';
 import { setImageFinalChoice } from '../../services/productImageService';
 import { enhancementQueue } from '../../services/imageProcessingQueue';
+import type { EnhancementMode } from '../../types/product';
+import type { ImageProcessingLog } from '../../types/imageEnhancement';
 
 export interface EnhancedPhotoReviewProps {
   productId: string;
@@ -59,6 +61,9 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
   const [originalUrl, setOriginalUrl] = useState<string>(initialOriginalUrl);
   const [enhancedUrl, setEnhancedUrl] = useState<string>(initialEnhancedUrl);
   const [activeView, setActiveView] = useState<DisplayView>('enhanced');
+  const [enhancementMode, setEnhancementMode] = useState<string | null>(null);
+  const [processingLog, setProcessingLog] = useState<any | null>(null);
+  const [showAiLog, setShowAiLog] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -73,26 +78,57 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
     if (!sourceId) return;
 
     try {
-      const { data, error } = await supabase
-        .from(sourceTable)
-        .select('id, original_image_url, enhanced_image_url, image_processing_status, final_image_choice')
-        .eq('id', sourceId)
-        .single();
+      let record: {
+        id: string;
+        original_image_url: string | null;
+        enhanced_image_url: string | null;
+        image_processing_status: string | null;
+        final_image_choice?: string | null;
+        enhancement_mode?: string | null;
+        processing_log?: unknown;
+      } | null = null;
 
-      if (error) {
-        console.warn('[EnhancedPhotoReview] Fetch product warning:', error.message);
-        return;
+      if (sourceTable === 'product_images') {
+        const { data, error } = await supabase
+          .from('product_images')
+          .select('id, original_image_url, enhanced_image_url, image_processing_status, final_image_choice, enhancement_mode, processing_log')
+          .eq('id', sourceId)
+          .single();
+
+        if (error) {
+          console.warn('[EnhancedPhotoReview] Fetch product warning:', error.message);
+          return;
+        }
+        record = data;
+      } else {
+        const { data, error } = await supabase
+          .from('products')
+          .select('id, original_image_url, enhanced_image_url, image_processing_status, final_image_choice')
+          .eq('id', sourceId)
+          .single();
+
+        if (error) {
+          console.warn('[EnhancedPhotoReview] Fetch product warning:', error.message);
+          return;
+        }
+        record = data;
       }
 
-      if (data) {
-        if (data.original_image_url) {
-          setOriginalUrl(data.original_image_url);
+      if (record) {
+        if (record.original_image_url) {
+          setOriginalUrl(record.original_image_url);
         }
-        if (data.enhanced_image_url) {
-          setEnhancedUrl(data.enhanced_image_url);
+        if (record.enhanced_image_url) {
+          setEnhancedUrl(record.enhanced_image_url);
         }
-        if (data.image_processing_status) {
-          setStatus(data.image_processing_status as ReviewStatus);
+        if (record.image_processing_status) {
+          setStatus(record.image_processing_status as ReviewStatus);
+        }
+        if (record.enhancement_mode) {
+          setEnhancementMode(record.enhancement_mode as EnhancementMode);
+        }
+        if (record.processing_log) {
+          setProcessingLog(record.processing_log as ImageProcessingLog);
         }
       }
     } catch (err: unknown) {
@@ -421,6 +457,78 @@ export const EnhancedPhotoReview: React.FC<EnhancedPhotoReviewProps> = ({
                   </>
                 )}
               </div>
+            </div>
+
+            {/* If mode is light_only: show the required notice banner */}
+            {enhancementMode === 'light_only' && (
+              <div
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs"
+                data-testid="light-only-notice"
+              >
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>
+                  Couldn't separate the background cleanly / पृष्ठभूमि साफ़ अलग नहीं हो सकी
+                </span>
+              </div>
+            )}
+
+            {/* "What the AI did / AI ने क्या किया" Panel */}
+            <div className="rounded-xl bg-[#1C120D] border border-[#2A1E17] overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => setShowAiLog((prev) => !prev)}
+                className="w-full p-2.5 flex items-center justify-between text-slate-300 hover:text-white transition-colors cursor-pointer"
+                data-testid="toggle-ai-log"
+              >
+                <div className="flex items-center space-x-1.5 font-semibold">
+                  <Sparkles className="w-3.5 h-3.5 text-[#EA580C]" />
+                  <span>What the AI did / AI ने क्या किया</span>
+                </div>
+                <span className="text-[10px] text-amber-400 font-mono">
+                  {showAiLog ? 'Hide / छुपाएं' : 'View / देखें'}
+                </span>
+              </button>
+
+              {showAiLog && (
+                <div className="p-3 border-t border-[#2A1E17] bg-[#140D09]/60 space-y-2 text-[11px] text-slate-300" data-testid="ai-log-details">
+                  {processingLog?.operations && processingLog.operations.length > 0 ? (
+                    <ul className="space-y-1.5 list-disc list-inside">
+                      {processingLog.operations.map((op: string) => {
+                        const labels: Record<string, string> = {
+                          mask_morphology_and_feathering: 'Cleaned edges & softened borders / किनारों को साफ़ और चिकना किया',
+                          bilateral_denoise: 'Smoothed image noise / फोटो का शोर (noise) कम किया',
+                          gray_world_white_balance: 'Corrected color temperature / रंगों का प्राकृतिक संतुलन किया',
+                          clahe_l_channel: 'Enhanced craft details & contrast / कारीगरी की बारीकियों और रोशनी को निखारा',
+                          adaptive_gamma: 'Brightened dark areas / गहरे हिस्सों की रोशनी बढ़ाई',
+                          gentle_unsharp_mask: 'Sharpened fine craft texture / सतह की बनावट को स्पष्ट किया',
+                          perspective_correction_flat: 'Straightened flat item perspective / चपटी वस्तु का कोण सीधा किया',
+                          fallback_correct_lighting: 'Balanced overall photo lighting / समग्र फोटो प्रकाश संतुलित किया',
+                        };
+                        return (
+                          <li key={op} className="text-slate-300">
+                            {labels[op] || op}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="text-slate-400">
+                      Standard classical contrast, color balance & studio composition applied.
+                    </p>
+                  )}
+
+                  {processingLog?.measurements && (
+                    <div className="pt-2 border-t border-[#241711] grid grid-cols-2 gap-2 text-[10px] text-slate-400 font-mono">
+                      <div>
+                        Sharpness: {Math.round(processingLog.measurements.sharpnessBefore ?? 0)} → {Math.round(processingLog.measurements.sharpnessAfter ?? 0)}
+                      </div>
+                      <div>
+                        Lightness: {Math.round(processingLog.measurements.meanLightnessBefore ?? 0)} → {Math.round(processingLog.measurements.meanLightnessAfter ?? 0)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <p className="text-center text-[11px] text-slate-400">

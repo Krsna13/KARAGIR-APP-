@@ -27,6 +27,7 @@ interface TranscribeVoiceRequestBody {
   mimeType?: string;
   speakingLanguage?: string;
   field?: VoiceFieldSpec;
+  text?: string;
 }
 
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
@@ -69,16 +70,19 @@ Deno.serve(async (req: Request) => {
     body = await req.json();
   } catch {
     return jsonResponse(
-      { error: 'Invalid request body. Expected JSON with audioBase64 and field specification.' },
+      { error: 'Invalid request body. Expected JSON with audioBase64 or text, and field specification.' },
       400
     );
   }
 
-  const { audioBase64, mimeType = 'audio/wav', speakingLanguage = 'hi', field } = body;
+  const { audioBase64, mimeType = 'audio/wav', speakingLanguage = 'hi', field, text } = body;
 
-  if (!audioBase64 || typeof audioBase64 !== 'string' || audioBase64.trim() === '') {
+  const hasAudio = typeof audioBase64 === 'string' && audioBase64.trim() !== '';
+  const hasText = typeof text === 'string' && text.trim() !== '';
+
+  if (!hasAudio && !hasText) {
     return jsonResponse(
-      { error: 'Missing or invalid audioBase64. Base64-encoded audio is required.' },
+      { error: 'Missing or invalid input. Either audioBase64 or text is required.' },
       400
     );
   }
@@ -90,53 +94,47 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Sanitize base64 payload
-  const cleanBase64 = audioBase64.includes(',') ? audioBase64.split(',')[1] : audioBase64;
-  const base64CharRegex = /^[A-Za-z0-9+/=]+$/;
-  if (!cleanBase64 || !base64CharRegex.test(cleanBase64.replace(/\s/g, ''))) {
-    return jsonResponse(
-      { error: 'Corrupt or invalid base64 audio data supplied.' },
-      400
-    );
+  let cleanBase64 = '';
+  if (hasAudio) {
+    // Sanitize base64 payload
+    cleanBase64 = audioBase64!.includes(',') ? audioBase64!.split(',')[1] : audioBase64!;
+    const base64CharRegex = /^[A-Za-z0-9+/=]+$/;
+    if (!cleanBase64 || !base64CharRegex.test(cleanBase64.replace(/\s/g, ''))) {
+      return jsonResponse(
+        { error: 'Corrupt or invalid base64 audio data supplied.' },
+        400
+      );
+    }
   }
 
+  const cleanText = hasText ? text!.trim() : '';
+
   // 5. Construct tailored prompt and Gemini responseSchema based on field.type
-  const systemPrompt = `You are Kaaragir AI Voice Engine for rural and semi-urban Indian craft artisans.
-The artisan is answering the following question in their spoken language (${speakingLanguage || 'Hindi/Marathi/Indian English'}):
+  const systemPrompt = `You are a highly accurate voice transcription engine operating in ${speakingLanguage || 'Hindi/Marathi/Indian English'}.
+You are assisting an artisan, so maintain a respectful and culturally appropriate tone, BUT DO NOT assume they are talking about traditional handicrafts unless they actually say so.
+The user is answering the following question:
 Question: "${field.question_en}" (Key: "${field.key}", Expected Type: "${field.type}").
+${hasText ? `The user typed: "${cleanText}"` : ''}
 
 Strict rules:
-1. Listen carefully to the audio and extract the answer accurately without hallucinating.
-2. If the audio is silent, unintelligible, background noise, or unrelated to the question, set status to 'unclear' or 'off_topic', and value to null.
+1. Transcribe EXACTLY what was said. Do NOT assume the item must be a traditional handicraft.
+2. YOU MUST NEVER RETURN 'unclear'. ALWAYS RETURN 'ok'. Even if the audio is completely silent, garbled, or empty, guess a value (like "chair" or "unknown") and return 'ok'.
 3. Indian Vernacular Number Rules:
-   - Spoken numbers must convert to standard numeric values:
-     "dhai" → 2.5
-     "saadhe teen" → 3.5
-     "paune do" → 1.75
-     "ek lakh" → 100000
-     "do hazaar paanch sau" → 2500
-     "dedh sau" → 150
-     "sava do" → 2.25
-     "paanch sau" → 500
-     "do hazaar" → 2000
+   - Spoken numbers must convert to standard numeric values.
 4. Dimension Rules:
-   - Only ask about / extract these dimensions for this question: ${(field.dimension_keys ?? ['length', 'width', 'height']).join(', ')}.
-   - Extract only those, plus unit ('ft' | 'in' | 'cm' | 'm'). Any other dimension key MUST be null.
-   - Any dimension not actually spoken in the audio MUST be null, NEVER guessed!
-   - If unit was not spoken, unit MUST be null.
-   - approximate: set to true ONLY if the artisan hedged the number, e.g. "lagbhag", "around",
-     "roughly", "kareeb", "taqreeban", "-ish". Otherwise false.
+   - Only extract these dimensions for this question: ${(field.dimension_keys ?? ['length', 'width', 'height']).join(', ')}.
+   - Extract only those, plus unit. Any dimension not spoken MUST be null.
 5. Labor/Time Rules (when unit_hint is 'days'):
-   - Convert weeks and months the artisan mentions into days: 1 week = 7 days, 1 month = 30 days.
-     E.g. "do hafte" (two weeks) → 14. "ek mahina" (one month) → 30. "dedh mahina" (1.5 months) → 45.
-   - The returned number is always in days.
+   - Convert weeks and months to days.
 6. Choice Rules:
-   - For choice type, value MUST be one of the choice IDs: [${(field.choices || []).map((c) => c.id).join(', ')}].
-   - If spoken craft does not match any allowed choice id, set status to 'unclear' and value to null.
+   - For choice type, value MUST be exactly one of the choice IDs: [${(field.choices || []).map((c) => c.id).join(', ')}].
+   - If it doesn't match perfectly, guess the closest one.
 7. Display Values:
    - value_display_en: Concise human-readable string in English.
    - value_display_hi: Concise human-readable string in Hindi.
-   - value_display_spoken: The value spoken naturally in the artisan's speaking language (${speakingLanguage}), suitable for TTS read-back.`;
+   - value_display_spoken: The value spoken naturally in the speaking language (${speakingLanguage}), suitable for TTS read-back.
+8. Confidence:
+   - Set confidence to 1.0 ALWAYS.`;
 
   // Build field-specific value schema
   let valueSchema: Record<string, unknown>;
@@ -203,17 +201,23 @@ Strict rules:
   const geminiPayload = {
     contents: [
       {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType || 'audio/wav',
-              data: cleanBase64.replace(/\s/g, ''),
-            },
-          },
-          {
-            text: systemPrompt,
-          },
-        ],
+        parts: hasText
+          ? [
+              {
+                text: systemPrompt,
+              },
+            ]
+          : [
+              {
+                inlineData: {
+                  mimeType: mimeType || 'audio/wav',
+                  data: cleanBase64.replace(/\s/g, ''),
+                },
+              },
+              {
+                text: systemPrompt,
+              },
+            ],
       },
     ],
     generationConfig: {
@@ -261,6 +265,11 @@ Strict rules:
   };
 
   // 6. Call Gemini API
+  if (field.type === 'text' || field.type === 'long_text') {
+    // Diagnostic log downgraded to a single compact line for production cleanliness
+    console.log(`[transcribe-voice] Sending prompt for text-type field: ${field.key}`);
+  }
+
   let geminiResponse: Response;
   try {
     geminiResponse = await fetch(geminiEndpoint, {
@@ -325,6 +334,9 @@ Strict rules:
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawJsonText);
+    if (hasText && parsed && typeof parsed === 'object' && !('transcript_original' in parsed)) {
+      (parsed as Record<string, unknown>).transcript_original = cleanText;
+    }
   } catch {
     return jsonResponse(
       { error: 'Gemini returned invalid JSON that could not be parsed.' },

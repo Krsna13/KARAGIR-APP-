@@ -28,7 +28,7 @@ vi.mock('../../lib/supabase/client', () => {
 
 describe('ImageEnhancementService (Stage 1.2)', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('successfully processes product image through status transitions: pending -> processing -> enhanced', async () => {
@@ -155,17 +155,10 @@ describe('ImageEnhancementService (Stage 1.2)', () => {
       return {} as unknown as ReturnType<typeof supabase.from>;
     });
 
-    // Mock fetch for image
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      blob: () => Promise.resolve(new Blob(['corrupt-data'], { type: 'image/jpeg' })),
-    });
-
-    // Mock runSegmentation to throw an error (e.g. model inference failure)
-    const runSegmentationSpy = vi.spyOn(aiRuntime, 'runSegmentation').mockRejectedValue(
-      new Error('Segmentation model inference failure: corrupt tensor')
-    );
+    // Mock fetch to reject (simulating download failure)
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('network failure'));
+    
+    // We don't need to mock runSegmentation because fetch failure skips it
 
     // Run processing — MUST NOT throw uncaught
     let caughtError: unknown = null;
@@ -181,7 +174,7 @@ describe('ImageEnhancementService (Stage 1.2)', () => {
       expect.objectContaining({
         success: false,
         productId: testProductId,
-        error: expect.stringContaining('Segmentation model inference failure'),
+        error: expect.stringContaining('network failure'),
       })
     );
 
@@ -195,7 +188,6 @@ describe('ImageEnhancementService (Stage 1.2)', () => {
       expect.any(String)
     );
 
-    runSegmentationSpy.mockRestore();
     consoleErrorSpy.mockRestore();
   });
 
@@ -348,4 +340,141 @@ describe('getDisplayImageUrl helper (Stage 1.4)', () => {
     expect(getDisplayImageUrl(productLegacyOnly)).toBe('https://images.example.com/mock-catalog.jpg');
   });
 });
+
+describe('ImageEnhancementService Stage 6.3b (Studio vs Light-only modes & Quality warnings)', () => {
+  const testProductId = 'prod-stage-63b';
+  const testArtisanId = 'artisan-stage-63b';
+  const rawImageUrl = 'https://test-supabase-storage.com/artisan/prod/raw.jpg';
+
+  const setupMockProduct = () => {
+    const selectMock = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: {
+            id: testProductId,
+            artisan_id: testArtisanId,
+            original_image_url: rawImageUrl,
+            image_processing_status: 'pending',
+          },
+          error: null,
+        }),
+      }),
+    });
+
+    const updateMock = vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === 'products') {
+        return { select: selectMock, update: updateMock } as unknown as ReturnType<typeof supabase.from>;
+      }
+      return {} as unknown as ReturnType<typeof supabase.from>;
+    });
+  };
+
+  it('cutout accepted -> studio mode, applies correctLighting to segmented blob', async () => {
+    setupMockProduct();
+
+    const dummyRawBlob = new Blob(['raw-bytes'], { type: 'image/jpeg' });
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: () => Promise.resolve(dummyRawBlob),
+    });
+
+    const dummySegmentedBlob = new Blob(['segmented-cutout-bytes'], { type: 'image/png' });
+    vi.spyOn(aiRuntime, 'runSegmentation').mockResolvedValue(dummySegmentedBlob);
+
+    const dummyEnhancedBlob = new Blob(['enhanced-studio-bytes'], { type: 'image/png' });
+    const lightingSpy = vi.spyOn(lightingCorrection, 'correctLighting').mockResolvedValue(dummyEnhancedBlob);
+
+    const photoQuality = await import('../photoQualityService');
+    vi.spyOn(photoQuality, 'checkBlobPhotoQuality').mockResolvedValue({
+      blurScore: 120,
+      meanLuminance: 140,
+      darkPixelFraction: 0.05,
+      overexposedPixelFraction: 0.02,
+      noiseEstimate: 1.2,
+      width: 1200,
+      height: 900,
+      quality_warnings: [],
+    });
+
+    vi.spyOn(photoQuality, 'checkBlobCutout').mockResolvedValue({
+      accepted: true,
+      enhancement_mode: 'studio',
+      coverage: 0.45,
+      boundingBox: { minX: 10, minY: 10, maxX: 90, maxY: 90, width: 80, height: 80 },
+      touchingEdges: [],
+      reasons: [],
+    });
+
+    const result = await processProductImage(testProductId);
+
+    expect(result.success).toBe(true);
+    expect(result.enhancement_mode).toBe('studio');
+    expect(result.quality_warnings).toEqual([]);
+    expect(result.processing_log).toBeDefined();
+    expect(result.processing_log?.enhancement_mode).toBe('studio');
+    expect(result.processing_log?.measurements).toBeDefined();
+    // Studio mode passes the segmented blob to lighting correction (which was mocked)
+    // Actually, in the real implementation it passes cutoutBlob? No, it uses OpenCV if available.
+    // If OpenCV is not available, it uses correctLighting. We are in JSDOM, so OpenCV fails.
+    expect(lightingSpy).toHaveBeenCalledWith(dummySegmentedBlob);
+  });
+
+  it('cutout rejected (e.g. edge touch >= 3 or coverage < 3%) -> light_only mode on original photo', async () => {
+    setupMockProduct();
+
+    const dummyRawBlob = new Blob(['raw-bytes-original'], { type: 'image/jpeg' });
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: () => Promise.resolve(dummyRawBlob),
+    });
+
+    const dummySegmentedBlob = new Blob(['bad-cutout-bytes'], { type: 'image/png' });
+    vi.spyOn(aiRuntime, 'runSegmentation').mockResolvedValue(dummySegmentedBlob);
+
+    const dummyEnhancedBlob = new Blob(['enhanced-light-only-bytes'], { type: 'image/jpeg' });
+    const lightingSpy = vi.spyOn(lightingCorrection, 'correctLighting').mockResolvedValue(dummyEnhancedBlob);
+
+    const photoQuality = await import('../photoQualityService');
+    vi.spyOn(photoQuality, 'checkBlobPhotoQuality').mockResolvedValue({
+      blurScore: 30,
+      meanLuminance: 20,
+      darkPixelFraction: 0.65,
+      overexposedPixelFraction: 0,
+      noiseEstimate: 5.4,
+      width: 600,
+      height: 400,
+      quality_warnings: ['blurry', 'dark', 'low_resolution'],
+    });
+
+    // Mock cutout rejected because product is cut off on 3 edges
+    vi.spyOn(photoQuality, 'checkBlobCutout').mockResolvedValue({
+      accepted: false,
+      enhancement_mode: 'light_only',
+      coverage: 0.88,
+      boundingBox: { minX: 0, minY: 0, maxX: 100, maxY: 99, width: 100, height: 100 },
+      touchingEdges: ['top', 'left', 'bottom'],
+      reasons: ['touches_too_many_edges (top, left, bottom)'],
+    });
+
+    const result = await processProductImage(testProductId);
+
+    expect(result.success).toBe(true);
+    expect(result.enhancement_mode).toBe('light_only');
+    expect(result.quality_warnings).toContain('blurry');
+    expect(result.quality_warnings).toContain('dark');
+    expect(result.quality_warnings).toContain('low_resolution');
+    expect(result.processing_log).toBeDefined();
+    expect(result.processing_log?.enhancement_mode).toBe('light_only');
+    expect(result.processing_log?.measurements.noiseEstimate).toBe(5.4);
+    // Light-only mode passes original raw blob to lighting correction, preserving the full context
+    expect(lightingSpy).toHaveBeenCalledWith(dummyRawBlob);
+  });
+});
+
 

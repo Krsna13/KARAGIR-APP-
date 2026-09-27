@@ -214,12 +214,15 @@ describe('processProductImageById via enhancementQueue (real pipeline logic, moc
 
     const uploads = fakeSupabase.calls.filter((c) => c.kind === 'upload').map((c) => c.payload);
     expect(uploads).toEqual([
-      `${ARTISAN}/${PRODUCT}/img-1/enhanced.png`,
-      `${ARTISAN}/${PRODUCT}/img-2/enhanced.png`,
-      `${ARTISAN}/${PRODUCT}/img-3/enhanced.png`,
+      `${ARTISAN}/${PRODUCT}/img-1/enhanced.jpg`,
+      `${ARTISAN}/${PRODUCT}/img-1/cutout.png`,
+      `${ARTISAN}/${PRODUCT}/img-2/enhanced.jpg`,
+      `${ARTISAN}/${PRODUCT}/img-2/cutout.png`,
+      `${ARTISAN}/${PRODUCT}/img-3/enhanced.jpg`,
+      `${ARTISAN}/${PRODUCT}/img-3/cutout.png`,
     ]);
     expect(imageRow('img-2').enhanced_image_url).toBe(
-      `https://fake.storage/${BUCKET}/${ARTISAN}/${PRODUCT}/img-2/enhanced.png`
+      `https://fake.storage/${BUCKET}/${ARTISAN}/${PRODUCT}/img-2/enhanced.jpg`
     );
   });
 
@@ -235,31 +238,37 @@ describe('processProductImageById via enhancementQueue (real pipeline logic, moc
     await enhancementQueue.enqueue('img-1');
     expect(product()).toMatchObject({
       image_processing_status: 'enhanced',
-      enhanced_image_url: `https://fake.storage/${BUCKET}/${ARTISAN}/${PRODUCT}/img-1/enhanced.png`,
+      enhanced_image_url: `https://fake.storage/${BUCKET}/${ARTISAN}/${PRODUCT}/img-1/enhanced.jpg`,
       original_image_url: row('img-1', 0, true).original_image_url,
     });
   });
 
-  it('segmentation failure: resolves (never throws), marks the photo failed, logs, and the next photo still runs', async () => {
+  it('fetch failure: resolves (never throws), marks the photo failed, logs, and the next photo still runs', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(runSegmentation)
-      .mockRejectedValueOnce(new Error('model inference failure'))
-      .mockResolvedValueOnce(new Blob(['seg'], { type: 'image/png' }));
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('img-1')) {
+        return Promise.reject(new Error('network failure'));
+      }
+      return Promise.resolve({ ok: true, status: 200, blob: () => Promise.resolve(new Blob(['data'])) });
+    });
+    vi.mocked(runSegmentation).mockResolvedValue(new Blob(['seg'], { type: 'image/png' }));
 
     const [failed, ok] = await Promise.all([
       enhancementQueue.enqueue('img-1'),
       enhancementQueue.enqueue('img-2'),
     ]);
 
-    expect(failed).toMatchObject({ success: false, imageId: 'img-1', error: 'model inference failure' });
+    expect(failed).toMatchObject({ success: false, imageId: 'img-1', error: expect.stringContaining('network failure') });
     expect(imageRow('img-1').image_processing_status).toBe('failed');
     expect(fakeSupabase.rows('products')[0].image_processing_status).toBe('failed'); // cover mirrored
     expect(ok.success).toBe(true);
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining('[ImageEnhancementService] Error processing image img-1'),
-      'model inference failure'
+      expect.stringContaining('network failure')
     );
     errorSpy.mockRestore();
+    globalThis.fetch = originalFetch;
   });
 
   it('enhanced upload failure is a failure, not a silent success', async () => {

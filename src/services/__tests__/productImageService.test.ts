@@ -24,6 +24,7 @@ import {
   setCoverImage,
   setImageFinalChoice,
   syncCoverToProduct,
+  clearLocalImageStore,
 } from '../productImageService';
 import type { ProductImage } from '../../types/product';
 import { resizeImageForUpload } from '../../utils/imageResize';
@@ -70,6 +71,7 @@ const imagesInDb = () =>
 
 describe('productImageService', () => {
   beforeEach(() => {
+    clearLocalImageStore();
     seed([]);
     fakeSupabase.invariants = productImageInvariants;
   });
@@ -79,9 +81,14 @@ describe('productImageService', () => {
     it('storage paths are per image, so photos never overwrite each other', () => {
       const a = productImageStoragePaths({ artisan_id: 'art', product_id: 'p', id: 'i1' });
       const b = productImageStoragePaths({ artisan_id: 'art', product_id: 'p', id: 'i2' });
-      expect(a).toEqual({ raw: 'art/p/i1/raw.jpg', enhanced: 'art/p/i1/enhanced.png' });
+      expect(a).toEqual({
+        raw: 'art/p/i1/raw.jpg',
+        enhanced: 'art/p/i1/enhanced.jpg',
+        cutout: 'art/p/i1/cutout.png',
+      });
       expect(b.raw).not.toBe(a.raw);
       expect(b.enhanced).not.toBe(a.enhanced);
+      expect(b.cutout).not.toBe(a.cutout);
       // First folder segment is the artisan id (storage RLS: foldername[1] = auth.uid()).
       expect(a.raw.split('/')[0]).toBe('art');
     });
@@ -337,13 +344,15 @@ describe('productImageService', () => {
     });
   });
 
-  it('collectProductImageStoragePaths lists raw + enhanced paths for every photo of a product', async () => {
+  it('collectProductImageStoragePaths lists raw + enhanced + cutout paths for every photo of a product', async () => {
     seed([image({ id: 'a', position: 0 }), image({ id: 'b', position: 1 })]);
     await expect(collectProductImageStoragePaths(PRODUCT)).resolves.toEqual([
       `${ARTISAN}/${PRODUCT}/a/raw.jpg`,
-      `${ARTISAN}/${PRODUCT}/a/enhanced.png`,
+      `${ARTISAN}/${PRODUCT}/a/enhanced.jpg`,
+      `${ARTISAN}/${PRODUCT}/a/cutout.png`,
       `${ARTISAN}/${PRODUCT}/b/raw.jpg`,
-      `${ARTISAN}/${PRODUCT}/b/enhanced.png`,
+      `${ARTISAN}/${PRODUCT}/b/enhanced.jpg`,
+      `${ARTISAN}/${PRODUCT}/b/cutout.png`,
     ]);
   });
 });

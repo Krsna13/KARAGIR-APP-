@@ -75,6 +75,7 @@ export interface ProductRecord {
   listing_facts_hash?: string | null;
   listing_approved?: boolean | null;
   summary_spoken?: string | null;
+  photo_background?: PhotoBackground | null;
 }
 
 export type ListingSection = 'title' | 'caption' | 'highlights' | 'description';
@@ -131,7 +132,13 @@ export type FinalImageChoice = 'original' | 'enhanced';
 /** Maximum photos per product (also enforced by the product_images DB trigger). */
 export const MAX_PRODUCT_IMAGES = 5;
 
-// Stage 6.2: one row per product photo (see migration 20260924100000_product_images.sql)
+import type { ImageProcessingLog, PhotoBackground } from './imageEnhancement';
+export type { ImageProcessingLog, PhotoBackground };
+
+export type QualityWarning = 'blurry' | 'dark' | 'overexposed' | 'low_resolution';
+export type EnhancementMode = 'studio' | 'light_only';
+
+// Stage 6.2 & 6.3b: one row per product photo (see migration 20261001090000_add_processing_log_to_product_images.sql)
 export interface ProductImage {
   id: string; // uuid
   product_id: string; // uuid
@@ -139,10 +146,15 @@ export interface ProductImage {
   position: number; // 0..4
   original_image_url: string | null;
   enhanced_image_url: string | null;
+  cutout_image_url?: string | null;
   image_processing_status: ImageProcessingStatus;
   final_image_choice: FinalImageChoice | null;
   is_cover: boolean;
   created_at: string;
+  enhancement_mode?: EnhancementMode;
+  quality_warnings?: QualityWarning[];
+  mask_coverage?: number | null;
+  processing_log?: ImageProcessingLog;
 }
 
 export interface MarketReferenceListing {

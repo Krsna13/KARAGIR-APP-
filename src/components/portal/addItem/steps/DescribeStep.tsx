@@ -8,14 +8,14 @@ import {
   PackageCheck,
   CalendarClock,
   Ruler,
-  Mic,
   BookOpen,
   ShieldCheck,
   RefreshCcw,
 } from 'lucide-react';
-import { VoiceInputButton } from '../../../voice/VoiceInputButton';
+import { VoiceOrTypeInput } from '../../../voice/VoiceOrTypeInput';
 import { speakText } from '../../../../config/languages';
 import { saveDraft, debouncedSaveDraft } from '../../../../services/draftService';
+import { assertValidProductPatch } from '../__tests__/patchValidator';
 import { getTechniqueOptions, techniqueVoiceChoices } from '../../../../config/techniqueOptions';
 import {
   AVAILABILITY_OPTIONS,
@@ -54,7 +54,10 @@ export interface DescribeStepProps {
 }
 
 type DraftUpdate = Parameters<typeof saveDraft>[1];
-const toUpdate = (patch: Partial<ProductRecord>) => patch as unknown as DraftUpdate;
+const toUpdate = (patch: Partial<ProductRecord>) => {
+  assertValidProductPatch(patch as Record<string, unknown>);
+  return patch as unknown as DraftUpdate;
+};
 
 const voiceText = (value: unknown): string => {
   if (typeof value === 'string') return value.trim();
@@ -431,8 +434,8 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
               </span>
             ))}
           </div>
-          <div data-testid="add-feature-voice" className="inline-flex">
-            <VoiceInputButton
+          <div data-testid="add-feature-voice" className="w-full">
+            <VoiceOrTypeInput
               field={{ key: 'feature', type: 'text', question_en: 'What else is special about it?' }}
               speakingLanguage={lang}
               onValueConfirmed={(v) => {
@@ -455,8 +458,8 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
               </span>
             ))}
           </div>
-          <div data-testid="add-color-voice" className="inline-flex">
-            <VoiceInputButton
+          <div data-testid="add-color-voice" className="w-full">
+            <VoiceOrTypeInput
               field={{ key: 'color', type: 'text', question_en: 'What color is it?' }}
               speakingLanguage={lang}
               onValueConfirmed={(v) => {
@@ -498,8 +501,8 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
               </span>
             ))}
           </div>
-          <div data-testid="add-use-voice" className="inline-flex">
-            <VoiceInputButton
+          <div data-testid="add-use-voice" className="w-full">
+            <VoiceOrTypeInput
               field={{ key: 'use', type: 'text', question_en: 'Where would someone use it?' }}
               speakingLanguage={lang}
               onValueConfirmed={(v) => {
@@ -526,9 +529,8 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
     return (
       <div key={phase} className="space-y-4" data-testid="question-card-dimensions">
         {questionHeader(dimensionsQuestionText(shape!, lang), <Ruler className="w-3.5 h-3.5 text-slate-500" />)}
-        <div className="flex items-center gap-3">
-          <VoiceInputButton field={dimensionField} speakingLanguage={lang} onValueConfirmed={saveDimensions} />
-          <span className="text-xs text-slate-300">Tap and say it / दबाकर बोलिए</span>
+        <div className="w-full flex justify-center">
+          <VoiceOrTypeInput field={dimensionField} shapeProfile={shape} speakingLanguage={lang} onValueConfirmed={saveDimensions} />
         </div>
       </div>
     );
@@ -538,9 +540,8 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
     return (
       <div key={phase} className="space-y-4" data-testid="question-card-thickness">
         {questionHeader(thicknessQuestionText(lang))}
-        <div className="flex items-center gap-3">
-          <VoiceInputButton field={thicknessField} speakingLanguage={lang} onValueConfirmed={saveThickness} />
-          <span className="text-xs text-slate-300">Tap and say it / दबाकर बोलिए</span>
+        <div className="w-full flex justify-center">
+          <VoiceOrTypeInput field={thicknessField} speakingLanguage={lang} onValueConfirmed={saveThickness} />
         </div>
         {skipButton(skipThickness, 'skip-thickness')}
       </div>
@@ -569,9 +570,8 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
             );
           })}
         </div>
-        <div className="flex items-center gap-3">
-          <VoiceInputButton field={techniqueField} speakingLanguage={lang} onValueConfirmed={(v) => saveTechnique(String(v))} />
-          <span className="text-xs text-slate-300">Or say it / या बोलिए</span>
+        <div className="w-full flex justify-center">
+          <VoiceOrTypeInput field={techniqueField} speakingLanguage={lang} onValueConfirmed={(v) => saveTechnique(String(v))} />
         </div>
       </div>
     );
@@ -581,9 +581,8 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
     return (
       <div key={phase} className="space-y-4" data-testid="question-card-labor_days">
         {questionHeader(laborDaysQuestionText(lang))}
-        <div className="flex items-center gap-3">
-          <VoiceInputButton field={laborDaysField} speakingLanguage={lang} onValueConfirmed={saveLaborDays} />
-          <span className="text-xs text-slate-300">Tap and say it / दबाकर बोलिए</span>
+        <div className="w-full flex justify-center">
+          <VoiceOrTypeInput field={laborDaysField} speakingLanguage={lang} onValueConfirmed={saveLaborDays} />
         </div>
       </div>
     );
@@ -617,9 +616,8 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
     return (
       <div key={phase} className="space-y-4" data-testid="question-card-availability_followup">
         {questionHeader(isReady ? quantityQuestionText(lang) : leadTimeQuestionText(lang))}
-        <div className="flex items-center gap-3">
-          <VoiceInputButton field={isReady ? quantityField : leadTimeField} speakingLanguage={lang} onValueConfirmed={saveFollowup} />
-          <span className="text-xs text-slate-300">Tap and say it / दबाकर बोलिए</span>
+        <div className="w-full flex justify-center">
+          <VoiceOrTypeInput field={isReady ? quantityField : leadTimeField} speakingLanguage={lang} onValueConfirmed={saveFollowup} />
         </div>
       </div>
     );
@@ -654,9 +652,8 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
     return (
       <div key={phase} className="space-y-4" data-testid="question-card-story">
         {questionHeader(storyQuestionText(lang), <p className="text-[11px] text-amber-300 flex items-center gap-1"><BookOpen className="w-3 h-3" />{storyEncouragement(lang)}</p>)}
-        <div className="flex items-center gap-3">
-          <VoiceInputButton field={storyField} speakingLanguage={lang} maxDurationSeconds={STORY_MAX_SECONDS} onValueConfirmed={saveStory} />
-          <span className="text-xs text-slate-300 flex items-center gap-1"><Mic className="w-3.5 h-3.5" /> Up to 90 seconds</span>
+        <div className="w-full flex justify-center">
+          <VoiceOrTypeInput field={storyField} speakingLanguage={lang} maxDurationSeconds={STORY_MAX_SECONDS} onValueConfirmed={saveStory} />
         </div>
         {skipButton(skipStory, 'skip-story')}
       </div>
@@ -667,9 +664,8 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
     return (
       <div key={phase} className="space-y-4" data-testid="question-card-care">
         {questionHeader(careInstructionsQuestionText(lang), <p className="text-[11px] text-slate-400 flex items-center gap-1"><ShieldCheck className="w-3 h-3" />Optional</p>)}
-        <div className="flex items-center gap-3">
-          <VoiceInputButton field={careField} speakingLanguage={lang} onValueConfirmed={saveCare} />
-          <span className="text-xs text-slate-300">Tap and say it / दबाकर बोलिए</span>
+        <div className="w-full flex justify-center">
+          <VoiceOrTypeInput field={careField} speakingLanguage={lang} onValueConfirmed={saveCare} />
         </div>
         {skipButton(skipCare, 'skip-care')}
       </div>

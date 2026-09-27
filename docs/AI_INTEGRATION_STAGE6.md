@@ -75,3 +75,40 @@ If an AI provider fails or the network drops (for mock providers), a graceful er
 
 **CONDITIONALLY READY** 
 (The architecture is complete, robust, and correctly delegates to Native Plugins. It is fully ready for demonstration, pending only the compilation and insertion of real Qualcomm GeniX model binaries on the target device.)
+
+---
+
+## Stage 6.4 — Artisan "Add Item" Wizard: Identify Step
+Extends the Craft Copilot concept from the buyer side to the artisan side: instead of a customer describing a custom order, an artisan photographs an item they've made and the AI helps turn it into a catalog listing.
+
+- **New Flow:** `src/components/portal/addItem/steps/IdentifyStep.tsx` + `identifyLogic.ts` (part of `AddItemWizard.tsx`, `useAddItemWizard.ts`).
+- **Behavior:** Artisan uploads/captures product photos. The `identify-product` Supabase edge function (Gemini vision) proposes category, material, shape, finish, and complexity. The artisan confirms or corrects each field via voice input or text, with text-to-speech read-back for accessibility.
+- **Backend:** New storage buckets and RLS policies for product photos and voice notes; `20260926090000_product_identification_photos.sql` migration.
+- **Supporting services:** `imageEnhancementService.ts` (photo cleanup before AI submission), `ProductPhotoCapture.tsx`, `EnhancedPhotoReview.tsx`, `VoiceNoteRecorder.tsx`.
+
+## Stage 6.5 — Add Item Wizard: Describe Step
+- **Component:** `src/components/portal/addItem/steps/DescribeStep.tsx` + `describeLogic.ts`.
+- **Behavior:** Guides the artisan through structured product details — dimensions, technique, availability, quantity, lead time, labor days, customization options, care instructions, and a free-text "story" field — via voice-driven Q&A, with AI-suggested facts (`aiFactsFrom`) pre-filling likely answers based on the Identify step's output.
+- **Backend:** `20260927090000_describe_step_columns.sql` migration adds the new product columns; `database.types.ts` regenerated.
+
+## Stage 6.6 — Multilingual Listing Preview, Edge Functions & Dev Tooling
+- **Component:** `src/components/portal/addItem/steps/PreviewStep.tsx` + `ListingPreviewCard.tsx` + `listingLogic.ts`.
+- **Behavior:** Generates a bilingual (English/Hindi) buyer-facing listing from the Identify + Describe data, with a swipeable photo gallery, read-aloud audio per section, and per-section voice-driven revision. Artisan taps "Looks good" to finalize and publish.
+- **New Edge Function:** `supabase/functions/generate-listing/` (`index.ts` + `validation.ts`) — calls the LLM to draft/revise the EN + HI listing copy, enforces strict no-fabrication validation against a shared list of disallowed marketing claims (`supabase/functions/_shared/riskyClaimsConfig.ts`), and retries once on validation failure. If AI generation fails entirely, a deterministic fallback listing (assembled directly from structured fields, no AI) is shown instead so the flow never dead-ends.
+- **New Service:** `src/services/listingService.ts` orchestrates calls to the edge function from the client.
+- **Backend:** `20260928090000_listing_preview_columns.sql`, `20260929090000_add_summary_spoken.sql` migrations.
+- **Dev Tooling:**
+  - `src/components/dev/DevDeviceCheckPage.tsx` — a diagnostic screen, gated behind `VITE_ENABLE_DEV_TOOLS`, that checks microphone/camera/storage/network access and on-device AI (NPU/device info via `KaaragirAINative`) health, linking into the on-device AI debug screen.
+  - `src/config/devTools.ts` — reads the `VITE_ENABLE_DEV_TOOLS` flag.
+  - `scripts/build-android.js` + `npm run build:android` — cross-platform build script that runs `vite build` then `npx cap sync android`, respecting the dev-tools flag.
+- **Stage 6.6 Follow-up Hardening:**
+  - **Database Migration & Schema Sync:** `products.summary_spoken TEXT` pushed to remote database via `20260929090000_add_summary_spoken.sql`, types regenerated from linked project.
+  - **Type Safety & Patch Validator:** Strongly typed `ProductDraftPatch` preventing unknown columns at compile-time across wizard steps; `assertValidProductPatch` test helper enforcing that all draft patches contain only schema columns.
+  - **Artisan-Facing Friendly Errors:** Technical failure reasons restricted to console logs; UI maps all generation/revision errors to bilingual messages ("We couldn't write the listing. Try again or use a simple listing / विवरण नहीं बन सका...").
+  - **Allowed Numbers Whitelist:** Extended to accept numbers found in artisan text (`story_original`, `story_en`, `extra_notes`, `care_instructions`) and `visible_features` (e.g., "20 years", "3 drawers").
+  - **Continuous Language Disambiguation:** Excised `सतत` from risky claims regex so normal sentences using continuous context are not falsely flagged as unverified claims.
+  - **Stale Unapproved Auto-Regeneration:** Entering PreviewStep with an unapproved listing and altered facts triggers automatic regeneration without prompting.
+  - **Approval Reset:** Revision and extra-notes regeneration automatically set `listing_approved = false` to require artisan confirmation of updated copy.
+  - **Touch Target Accessibility:** All gallery navigation chevrons and section edit pencils enforced to >= 48px touch targets (`min-w-[48px] min-h-[48px]`).
+- **Test Coverage:** Full test suite passing with unit tests across `PreviewStep`, `ListingPreviewCard`, `generateListingRetry`, `listingValidation`, and `patchValidator`.
+

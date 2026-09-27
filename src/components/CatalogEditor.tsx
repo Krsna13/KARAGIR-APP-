@@ -106,6 +106,20 @@ export const CatalogEditor: React.FC<Props> = ({ storeData, addWorkItem, saveSto
               setTimeout(() => setToastMessage(null), 3500);
             }
           }}
+          onPublish={(draft) => {
+            // Map the ProductRecord to WorkItem for the storeData
+            const workItem = {
+              id: draft.id,
+              title: draft.item_type || 'Untitled',
+              category: draft.category || storeData?.craftSpecialty || 'Craft',
+              coverImage: draft.original_image_url || '',
+              galleryImages: draft.image_urls || [],
+              price: draft.price || 0,
+              material: draft.material || '',
+              leadTimeDays: draft.labor_days || 7,
+            };
+            addWorkItem(workItem);
+          }}
           onLanguageSelected={(lang) => {
             if (storeData && saveStoreProfile) {
               saveStoreProfile({ speakingLanguage: lang });

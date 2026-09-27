@@ -8,7 +8,7 @@ import { collectProductImageStoragePaths, removeStorageFiles } from './productIm
 import type { ProductRecord } from '../types/product';
 import type { Database } from '../lib/supabase/database.types';
 
-type ProductUpdate = Database['public']['Tables']['products']['Update'];
+export type ProductUpdate = Database['public']['Tables']['products']['Update'];
 
 // Pending debounce map: productId -> pending updates & timer handle
 interface PendingDebounce {

@@ -397,6 +397,82 @@ describe('PreviewStep Component Flows', () => {
     );
   });
 
+  it('maps section revision failure to friendly bilingual message and hides technical error', async () => {
+    const draftWithListing: ProductRecord = {
+      ...baseDraft,
+      ...sampleListing,
+      listing_facts_hash: computeFactsHash(baseDraft),
+      listing_approved: false,
+    };
+
+    fakeSupabase.functionsInvoke = async (_name, options) => {
+      if ((options?.body as any)?.mode === 'revise') {
+        return { data: null, error: new Error('Backend failed validation: unauthorized claim detected in prompt.') };
+      }
+      return { data: sampleListing, error: null };
+    };
+
+    (transcribeForField as any).mockResolvedValue({
+      status: 'success',
+      value: 'Make it sound more antique and certified original.',
+      value_display_en: 'Make it sound more antique and certified original.',
+      value_display_hi: 'इसे अधिक प्राचीन और प्रमाणित बनाएं।',
+      confidence: 0.9,
+    });
+
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <PreviewStep
+          productId={PRODUCT_ID}
+          draft={draftWithListing}
+          speakingLanguage="hi"
+          onDraftPatch={vi.fn()}
+          artisanId={ARTISAN_ID}
+        />
+      );
+    });
+
+    const editTitleBtn = container.querySelector('[data-testid="edit-title-btn"]') as HTMLButtonElement;
+    await act(async () => {
+      editTitleBtn.click();
+    });
+
+    const modal = container.querySelector('[data-testid="voice-edit-modal"]') as HTMLElement;
+    const micBtn = modal.querySelector('[data-testid="voice-input-mic-button"]') as HTMLButtonElement;
+    await act(async () => {
+      micBtn.click();
+    });
+
+    const stopBtn = document.body.querySelector('[data-testid="voice-stop-button"]') as HTMLButtonElement;
+    if (stopBtn) {
+      await act(async () => {
+        stopBtn.click();
+      });
+    }
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 120));
+    });
+
+    const confirmBtn = document.body.querySelector('[data-testid="voice-confirm-yes-button"]') as HTMLButtonElement;
+    if (confirmBtn) {
+      await act(async () => {
+        confirmBtn.click();
+      });
+    }
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    // Modal stays open with friendly error message; raw error must never be shown
+    expect(modal.textContent).toContain("We couldn't update this section");
+    expect(modal.textContent).toContain('यह भाग बदला नहीं जा सका');
+    expect(modal.textContent).not.toContain('unauthorized claim detected');
+    expect(modal.textContent).not.toContain('Backend failed validation');
+  });
+
   it('records extra notes ("Tell buyers anything else") and triggers regeneration', async () => {
     const draftWithListing: ProductRecord = {
       ...baseDraft,
@@ -717,4 +793,220 @@ describe('PreviewStep Component Flows', () => {
     const approvedDraft = { ...unapprovedDraft, listing_approved: true };
     expect(canProceedPreview(approvedDraft)).toBe(true);
   });
+
+  // Stage 6.6b Fix B: Non-looping test
+  it('Fix B: stale unapproved listing does not loop on failed generation; invokes exactly once until retry', async () => {
+    const staleUnapprovedDraft: ProductRecord = {
+      ...baseDraft,
+      ...sampleListing,
+      listing_facts_hash: 'old-different-hash-12345',
+      listing_approved: false,
+    };
+
+    const invokeMock = vi.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'AI generation service failed' },
+    });
+    fakeSupabase.functionsInvoke = invokeMock;
+
+    const onPatch = vi.fn();
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <PreviewStep
+          productId={PRODUCT_ID}
+          draft={staleUnapprovedDraft}
+          speakingLanguage="hi"
+          onDraftPatch={onPatch}
+          artisanId={ARTISAN_ID}
+        />
+      );
+    });
+
+    // Exactly one invoke call on initial auto-regeneration
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+
+    // Error banner must be rendered with Try again button
+    const errorCard = container.querySelector('[data-testid="generation-error-card"]');
+    expect(errorCard).not.toBeNull();
+    const retryBtn = container.querySelector('[data-testid="error-retry-btn"]') as HTMLButtonElement;
+    expect(retryBtn).not.toBeNull();
+
+    // Re-rendering or state updates must NOT trigger another invoke automatically (no infinite loop)
+    await act(async () => {
+      root.render(
+        <PreviewStep
+          productId={PRODUCT_ID}
+          draft={staleUnapprovedDraft}
+          speakingLanguage="hi"
+          onDraftPatch={onPatch}
+          artisanId={ARTISAN_ID}
+        />
+      );
+    });
+
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+
+    // Clicking "Try again" manually triggers generation again
+    await act(async () => {
+      retryBtn.click();
+    });
+
+    expect(invokeMock).toHaveBeenCalledTimes(2);
+  });
+
+  // Stage 6.6b: Manual Section Edit tests
+  it('manual section edit blocks price and currency mentions', async () => {
+    const approvedDraft: ProductRecord = {
+      ...baseDraft,
+      ...sampleListing,
+      listing_facts_hash: computeFactsHash(baseDraft),
+      listing_approved: true,
+    };
+
+    const onPatch = vi.fn();
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <PreviewStep
+          productId={PRODUCT_ID}
+          draft={approvedDraft}
+          speakingLanguage="hi"
+          onDraftPatch={onPatch}
+          artisanId={ARTISAN_ID}
+        />
+      );
+    });
+
+    // Open edit title modal
+    const editTitleBtn = container.querySelector('[data-testid="edit-title-btn"]') as HTMLButtonElement;
+    expect(editTitleBtn).not.toBeNull();
+
+    await act(async () => {
+      editTitleBtn.click();
+    });
+
+    // Switch to manual mode
+    const manualTab = container.querySelector('[data-testid="edit-mode-manual"]') as HTMLButtonElement;
+    expect(manualTab).not.toBeNull();
+    await act(async () => {
+      manualTab.click();
+    });
+
+    const textarea = container.querySelector('[data-testid="manual-section-textarea"]') as HTMLTextAreaElement;
+    const saveBtn = container.querySelector('[data-testid="manual-save-btn"]') as HTMLButtonElement;
+    expect(textarea).not.toBeNull();
+    expect(saveBtn).not.toBeNull();
+
+    // Enter text containing price mention
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+      setter?.call(textarea, 'ठोस शीशम की कुर्सी कीमत ₹2500');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await act(async () => {
+      saveBtn.click();
+    });
+
+    // Must block and show error, onPatch must NOT be called with this invalid text
+    expect(onPatch).not.toHaveBeenCalled();
+    const errorMsg = container.querySelector('[data-testid="manual-edit-error"]');
+    expect(errorMsg).not.toBeNull();
+    expect(errorMsg?.textContent).toMatch(/कीमत|₹|Price or currency mentions/i);
+  });
+
+  it('manual section edit saves text, resets approval to false, and offers translation sync', async () => {
+    const approvedDraft: ProductRecord = {
+      ...baseDraft,
+      ...sampleListing,
+      listing_facts_hash: computeFactsHash(baseDraft),
+      listing_approved: true,
+    };
+
+    const onPatch = vi.fn();
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <PreviewStep
+          productId={PRODUCT_ID}
+          draft={approvedDraft}
+          speakingLanguage="hi"
+          onDraftPatch={onPatch}
+          artisanId={ARTISAN_ID}
+        />
+      );
+    });
+
+    // Open edit title modal
+    const editTitleBtn = container.querySelector('[data-testid="edit-title-btn"]') as HTMLButtonElement;
+    await act(async () => {
+      editTitleBtn.click();
+    });
+
+    // Switch to manual mode
+    const manualTab = container.querySelector('[data-testid="edit-mode-manual"]') as HTMLButtonElement;
+    await act(async () => {
+      manualTab.click();
+    });
+
+    const textarea = container.querySelector('[data-testid="manual-section-textarea"]') as HTMLTextAreaElement;
+    const saveBtn = container.querySelector('[data-testid="manual-save-btn"]') as HTMLButtonElement;
+
+    // Enter valid words without price mentions
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+      setter?.call(textarea, 'हस्तनिर्मित पारंपरिक शीशम कुर्सी');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await act(async () => {
+      saveBtn.click();
+    });
+
+    // Approval MUST be reset to false!
+    expect(onPatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title_hi: 'हस्तनिर्मित पारंपरिक शीशम कुर्सी',
+        listing_approved: false,
+      })
+    );
+
+    // Offers "Update English to match?" translation
+    const syncCard = container.querySelector('[data-testid="sync-offer-card"]');
+    expect(syncCard).not.toBeNull();
+    expect(syncCard?.textContent).toContain('Update English to match?');
+
+    // Test clicking translation sync
+    const invokeMock = vi.fn().mockResolvedValue({
+      data: {
+        ...sampleListing,
+        title_en: 'Handcrafted Traditional Sheesham Chair',
+        title_hi: 'हस्तनिर्मित पारंपरिक शीशम कुर्सी',
+      },
+      error: null,
+    });
+    fakeSupabase.functionsInvoke = invokeMock;
+
+    const syncYesBtn = container.querySelector('[data-testid="sync-translate-yes-btn"]') as HTMLButtonElement;
+    expect(syncYesBtn).not.toBeNull();
+
+    await act(async () => {
+      syncYesBtn.click();
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith('generate-listing', expect.anything());
+    expect(onPatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title_en: 'Handcrafted Traditional Sheesham Chair',
+        listing_approved: false,
+      })
+    );
+  });
 });
+

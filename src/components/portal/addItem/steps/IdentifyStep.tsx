@@ -18,10 +18,12 @@ import {
   Square,
   LayoutGrid,
   Flower2,
+  Sparkles,
 } from 'lucide-react';
-import { VoiceInputButton } from '../../../voice/VoiceInputButton';
+import { VoiceOrTypeInput } from '../../../voice/VoiceOrTypeInput';
 import { speakText } from '../../../../config/languages';
 import { saveDraft, debouncedSaveDraft } from '../../../../services/draftService';
+import { assertValidProductPatch } from '../__tests__/patchValidator';
 import { listProductImages } from '../../../../services/productImageService';
 import { identifyProductPhotos } from '../../../../services/productIdentificationService';
 import { getProductImageDisplayUrl } from '../../../../services/imageEnhancementService';
@@ -137,7 +139,10 @@ const restoreAi = (stored: unknown): ProductAiIdentification | null => {
 
 /** ProductRecord types its JSON columns precisely; the generated Update type says Json. */
 type DraftUpdate = Parameters<typeof saveDraft>[1];
-const toUpdate = (patch: Partial<ProductRecord>) => patch as unknown as DraftUpdate;
+const toUpdate = (patch: Partial<ProductRecord>) => {
+  assertValidProductPatch(patch as Record<string, unknown>);
+  return patch as unknown as DraftUpdate;
+};
 
 const finishLabel = (finish: ProductFinish | null) => FINISH_OPTIONS.find((f) => f.id === finish) ?? null;
 
@@ -158,7 +163,6 @@ export const IdentifyStep: React.FC<IdentifyStepProps> = ({ productId, draft, sp
   const [questionIndex, setQuestionIndex] = useState(0);
   const [editingKey, setEditingKey] = useState<QuestionKey | null>(null);
   const [correcting, setCorrecting] = useState(false);
-  const [typedAnswer, setTypedAnswer] = useState('');
   const [photosChanged, setPhotosChanged] = useState(false);
   const [runId, setRunId] = useState(0);
 
@@ -305,7 +309,6 @@ export const IdentifyStep: React.FC<IdentifyStepProps> = ({ productId, draft, sp
 
   const advance = (nextAnswers: IdentifyAnswers) => {
     setCorrecting(false);
-    setTypedAnswer('');
     if (editingKey) {
       setEditingKey(null);
       setPhase(isIdentifyStepComplete(nextAnswers) ? 'summary' : 'questions');
@@ -417,29 +420,28 @@ export const IdentifyStep: React.FC<IdentifyStepProps> = ({ productId, draft, sp
     );
   }
 
-  const failureBanner = failed && (
+  const failureBanner = !ai && (
     <div
-      className="p-3 rounded-2xl bg-amber-950/40 border border-amber-600/50 text-amber-100 text-xs flex items-start gap-2.5"
-      data-testid="identify-failure-banner"
-      role="status"
+      className="p-4 rounded-2xl bg-gradient-to-br from-[#120B08] to-[#1A120E] border border-[#EA580C]/40 flex flex-col items-center justify-center gap-3 shadow-lg"
+      data-testid="identify-object-by-ai-window"
     >
-      <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
-      <div className="flex-1 space-y-0.5">
-        <p className="font-bold">We could not recognise it automatically. Please tell us yourself.</p>
-        <p>
-          {lang === 'mr'
-            ? 'आपोआप ओळख पटू शकली नाही. कृपया स्वतः सांगा.'
-            : 'अपने आप पहचान नहीं हो सकी। कृपया खुद बताइए।'}
-        </p>
+      <div className="flex items-center gap-2 text-[#EA580C]">
+        <ScanSearch className="w-6 h-6 animate-pulse" />
+        <p className="font-bold text-sm text-white">Identify Object by AI</p>
       </div>
+      <p className="text-xs text-center text-slate-400">
+        {lang === 'mr'
+          ? 'AI च्या मदतीने वस्तू ओळखा'
+          : 'AI की मदद से चीज़ को पहचानें'}
+      </p>
       <button
         type="button"
         onClick={() => runIdentification(images)}
-        className="min-w-[48px] min-h-[48px] -my-2 -mr-1 rounded-xl flex items-center justify-center text-amber-300 hover:text-white"
-        aria-label={lang === 'mr' ? 'Try again / पुन्हा प्रयत्न करा' : 'Try again / फिर से कोशिश करें'}
-        data-testid="retry-identify"
+        className="w-full min-h-[48px] rounded-xl bg-gradient-to-r from-[#EA580C] to-[#C2410C] hover:from-[#F97316] hover:to-[#EA580C] text-white font-bold flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-[#EA580C]/25"
+        data-testid="identify-by-ai-button"
       >
-        <RefreshCw className="w-5 h-5" />
+        <Sparkles className="w-4 h-4" />
+        <span>{lang === 'mr' ? 'Identify with AI / AI ने ओळखा' : 'Identify with AI / AI से पहचानें'}</span>
       </button>
     </div>
   );
@@ -621,8 +623,8 @@ export const IdentifyStep: React.FC<IdentifyStepProps> = ({ productId, draft, sp
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3 pt-1">
-            <div className="flex items-center gap-2" data-testid="add-secondary-voice">
-              <VoiceInputButton
+            <div className="w-full sm:w-auto" data-testid="add-secondary-voice">
+              <VoiceOrTypeInput
                 field={TEXT_FIELDS.secondary}
                 speakingLanguage={lang}
                 onValueConfirmed={(value) => {
@@ -633,13 +635,10 @@ export const IdentifyStep: React.FC<IdentifyStepProps> = ({ productId, draft, sp
                   updateExtras([...list, material], finish);
                 }}
               />
-              <span className="text-[11px] text-slate-400">
-                {lang === 'mr' ? 'Add material / साहित्य जोडा' : 'Add material / सामग्री जोड़ें'}
-              </span>
             </div>
             {!finishInfo && (
-              <div className="flex items-center gap-2" data-testid="add-finish-voice">
-                <VoiceInputButton
+              <div className="w-full sm:w-auto" data-testid="add-finish-voice">
+                <VoiceOrTypeInput
                   field={FINISH_FIELD}
                   speakingLanguage={lang}
                   onValueConfirmed={(value) => {
@@ -647,9 +646,6 @@ export const IdentifyStep: React.FC<IdentifyStepProps> = ({ productId, draft, sp
                     if (FINISH_OPTIONS.some((f) => f.id === id)) updateExtras(secondary, id as ProductFinish);
                   }}
                 />
-                <span className="text-[11px] text-slate-400">
-                  {lang === 'mr' ? 'Add finish / पॉलिश सांगा' : 'Add finish / फिनिश बताएं'}
-                </span>
               </div>
             )}
           </div>
@@ -697,16 +693,14 @@ export const IdentifyStep: React.FC<IdentifyStepProps> = ({ productId, draft, sp
 
   const correctionPanel = isTextQuestion && !askYesNo && (
     <div className="space-y-3" data-testid="correction-panel">
-      <div className="flex items-center gap-3">
-        <VoiceInputButton
-          field={TEXT_FIELDS[currentKey as 'item_type' | 'material']}
-          speakingLanguage={lang}
-          onValueConfirmed={(value) => confirmAnswer(currentKey as 'item_type' | 'material', voiceText(value) || null)}
-        />
-        <span className="text-xs text-slate-300">
-          {lang === 'mr' ? 'Tap and say it / टॅप करून बोला' : 'Tap and say it / दबाकर बोलिए'}
-        </span>
-      </div>
+      <VoiceOrTypeInput
+        field={TEXT_FIELDS[currentKey as 'item_type' | 'material']}
+        speakingLanguage={lang}
+        onValueConfirmed={(value) => confirmAnswer(currentKey as 'item_type' | 'material', voiceText(value) || null)}
+        inputTestId="correction-text-input"
+        submitTestId="correction-text-save"
+        placeholder={lang === 'mr' ? 'Or type / किंवा टाइप करा' : 'Or type / या लिखें'}
+      />
       {currentKey === 'material' && (
         <div className="flex flex-wrap gap-2" data-testid="material-chips">
           {MATERIAL_CHIPS.map((chip) => (
@@ -722,30 +716,6 @@ export const IdentifyStep: React.FC<IdentifyStepProps> = ({ productId, draft, sp
           ))}
         </div>
       )}
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          confirmAnswer(currentKey as 'item_type' | 'material', typedAnswer.trim() || null);
-        }}
-      >
-        <input
-          value={typedAnswer}
-          onChange={(e) => setTypedAnswer(e.target.value)}
-          placeholder={lang === 'mr' ? 'Or type / किंवा टाइप करा' : 'Or type / या लिखें'}
-          className="flex-1 min-h-[48px] px-3 rounded-xl bg-[#120B08] border border-[#2A1E17] text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#EA580C]"
-          data-testid="correction-text-input"
-        />
-        <button
-          type="submit"
-          disabled={!typedAnswer.trim()}
-          className="w-12 h-12 rounded-xl bg-[#EA580C] text-white flex items-center justify-center disabled:opacity-40"
-          aria-label={lang === 'mr' ? 'Save / जतन करा' : 'Save / सहेजें'}
-          data-testid="correction-text-save"
-        >
-          <Check className="w-5 h-5" />
-        </button>
-      </form>
     </div>
   );
 
@@ -875,7 +845,6 @@ export const IdentifyStep: React.FC<IdentifyStepProps> = ({ productId, draft, sp
             type="button"
             onClick={() => {
               setCorrecting(true);
-              setTypedAnswer('');
             }}
             className="min-h-[72px] rounded-2xl bg-[#1A120E] border-2 border-red-500/50 text-white flex flex-col items-center justify-center gap-1 active:scale-95"
             data-testid="answer-no"

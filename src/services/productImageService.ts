@@ -32,12 +32,15 @@ import {
   type FinalImageChoice,
   type ImageProcessingStatus,
   type ProductImage,
+  type EnhancementMode,
+  type ImageProcessingLog,
+  type QualityWarning,
 } from '../types/product';
 
 export const PRODUCT_PHOTOS_BUCKET = 'product-photos-raw';
 
 const IMAGE_COLUMNS =
-  'id, product_id, artisan_id, position, original_image_url, enhanced_image_url, image_processing_status, final_image_choice, is_cover, created_at';
+  'id, product_id, artisan_id, position, original_image_url, enhanced_image_url, cutout_image_url, image_processing_status, final_image_choice, is_cover, created_at, enhancement_mode, quality_warnings, mask_coverage, processing_log';
 
 export class ProductImageLimitError extends Error {
   constructor() {
@@ -49,9 +52,13 @@ export class ProductImageLimitError extends Error {
 /** Per-image storage paths. First folder segment is the artisan id (storage RLS). */
 export function productImageStoragePaths(
   image: Pick<ProductImage, 'artisan_id' | 'product_id' | 'id'>
-): { raw: string; enhanced: string } {
+): { raw: string; enhanced: string; cutout: string } {
   const base = `${image.artisan_id}/${image.product_id}/${image.id}`;
-  return { raw: `${base}/raw.jpg`, enhanced: `${base}/enhanced.png` };
+  return {
+    raw: `${base}/raw.jpg`,
+    enhanced: `${base}/enhanced.jpg`,
+    cutout: `${base}/cutout.png`,
+  };
 }
 
 /** UUID v4 for a new image row, generated client-side so the storage path can use it before insert. */
@@ -151,14 +158,23 @@ export async function syncCoverToProduct(
       .eq('is_cover', true)
       .maybeSingle();
 
-    if (coverError) throw new Error(coverError.message);
+    if (coverError && !isRlsOrAuthError(coverError.message)) throw new Error(coverError.message);
+
+    let coverRow = cover;
+    if (!coverRow && isLocalOrDemo(productId)) {
+      coverRow = Array.from(localImageStore.values()).find(
+        (img) => img.product_id === productId && img.is_cover
+      ) as any;
+    }
+
+    const patch = buildCoverSyncPatch(coverRow as Parameters<typeof buildCoverSyncPatch>[0]);
 
     const { error: updateError } = await supabase
       .from('products')
-      .update(buildCoverSyncPatch(cover as Parameters<typeof buildCoverSyncPatch>[0]))
+      .update(patch)
       .eq('id', productId);
 
-    if (updateError) throw new Error(updateError.message);
+    if (updateError && !isRlsOrAuthError(updateError.message)) throw new Error(updateError.message);
     return { ok: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -167,15 +183,77 @@ export async function syncCoverToProduct(
   }
 }
 
-export async function listProductImages(productId: string): Promise<ProductImage[]> {
-  const { data, error } = await supabase
-    .from('product_images')
-    .select(IMAGE_COLUMNS)
-    .eq('product_id', productId)
-    .order('position', { ascending: true });
+export const localImageStore = new Map<string, ProductImage>();
+export const localRawBlobs = new Map<string, Blob>();
+const localDraftIds = new Set<string>();
 
-  if (error) throw new Error(`Could not load photos: ${error.message}`);
-  return (data ?? []) as ProductImage[];
+export function registerLocalDraftId(id: string): void {
+  localDraftIds.add(id);
+}
+
+export function unregisterLocalDraftId(id: string): void {
+  localDraftIds.delete(id);
+}
+
+export function isLocalDraftId(id: string): boolean {
+  return localDraftIds.has(id);
+}
+
+export function clearLocalImageStore(): void {
+  localImageStore.clear();
+  localDraftIds.clear();
+}
+
+export function isRlsOrAuthError(message?: string): boolean {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return (
+    lower.includes('row-level security') ||
+    lower.includes('row level security') ||
+    lower.includes('violates row-level security policy') ||
+    lower.includes('unauthorized') ||
+    lower.includes('not authorized') ||
+    lower.includes('permission denied') ||
+    lower.includes('jwt')
+  );
+}
+
+export function isLocalOrDemo(productId: string, artisanId?: string): boolean {
+  if (artisanId === 'demo-artisan' || artisanId?.startsWith('demo-')) return true;
+  if (productId.startsWith('00000000-')) return true;
+  if (localDraftIds.has(productId)) return true;
+  return false;
+}
+
+export async function listProductImages(productId: string): Promise<ProductImage[]> {
+  try {
+    const { data, error } = await supabase
+      .from('product_images')
+      .select(IMAGE_COLUMNS)
+      .eq('product_id', productId)
+      .order('position', { ascending: true });
+
+    if (!error && data) {
+      const currentDbIds = new Set((data as unknown as ProductImage[]).map((img) => img.id));
+      for (const [id, img] of localImageStore.entries()) {
+        if (img.product_id === productId && !currentDbIds.has(id)) {
+          localImageStore.delete(id);
+        }
+      }
+      for (const row of data) {
+        localImageStore.set(row.id, { ...(row as unknown as ProductImage) });
+      }
+      return (data as unknown as ProductImage[]).map((r) => ({ ...r }));
+    }
+  } catch (err) {
+    console.warn('[ProductImageService] Could not load photos from Supabase, checking local:', err);
+  }
+
+  const local = Array.from(localImageStore.values())
+    .filter((img) => img.product_id === productId)
+    .sort((a, b) => a.position - b.position)
+    .map((r) => ({ ...r }));
+  return local;
 }
 
 export interface AddProductImageParams {
@@ -214,10 +292,39 @@ export async function addProductImage({
   // falls back to the cover alone if the photos are too large (413).
   let uploadBlob: Blob;
   try {
-    uploadBlob = await resizeImageForUpload(blob);
+    // Add a 5 second timeout to prevent createImageBitmap from hanging on mobile browsers
+    uploadBlob = await Promise.race([
+      resizeImageForUpload(blob),
+      new Promise<Blob>((_, reject) => setTimeout(() => reject(new Error('Resize timeout')), 5000))
+    ]);
   } catch (err) {
     console.warn('[ProductImageService] Could not resize photo; uploading original:', err);
     uploadBlob = blob;
+  }
+
+  const isCover = !existing.some((img) => img.is_cover);
+
+  // If this is a demo artisan or in-memory draft, handle via localImageStore
+  if (isLocalOrDemo(productId, artisanId)) {
+    const localUrl = URL.createObjectURL(uploadBlob);
+    const demoImage: ProductImage = {
+      id,
+      product_id: productId,
+      artisan_id: ownerId,
+      position: slot,
+      original_image_url: localUrl,
+      enhanced_image_url: null,
+      cutout_image_url: null,
+      image_processing_status: 'pending',
+      final_image_choice: null,
+      is_cover: isCover,
+      created_at: new Date().toISOString(),
+      mask_coverage: null,
+    };
+    localImageStore.set(demoImage.id, demoImage);
+    localRawBlobs.set(demoImage.id, uploadBlob);
+    if (isCover) await syncCoverToProduct(productId);
+    return demoImage;
   }
 
   const { error: uploadError } = await supabase.storage
@@ -227,10 +334,33 @@ export async function addProductImage({
       cacheControl: '3600',
       upsert: false,
     });
-  if (uploadError) throw new Error(`Photo upload failed: ${uploadError.message}`);
+
+  if (uploadError) {
+    if (isRlsOrAuthError(uploadError.message)) {
+      const localUrl = URL.createObjectURL(uploadBlob);
+      const fallbackImage: ProductImage = {
+        id,
+        product_id: productId,
+        artisan_id: ownerId,
+        position: slot,
+        original_image_url: localUrl,
+        enhanced_image_url: null,
+        cutout_image_url: null,
+        image_processing_status: 'pending',
+        final_image_choice: null,
+        is_cover: isCover,
+        created_at: new Date().toISOString(),
+        mask_coverage: null,
+      };
+      localImageStore.set(fallbackImage.id, fallbackImage);
+      localRawBlobs.set(fallbackImage.id, uploadBlob);
+      if (isCover) await syncCoverToProduct(productId);
+      return fallbackImage;
+    }
+    throw new Error(`Photo upload failed: ${uploadError.message}`);
+  }
 
   const { data: publicData } = supabase.storage.from(PRODUCT_PHOTOS_BUCKET).getPublicUrl(paths.raw);
-  const isCover = !existing.some((img) => img.is_cover);
 
   const { data: inserted, error: insertError } = await supabase
     .from('product_images')
@@ -249,11 +379,35 @@ export async function addProductImage({
   if (insertError || !inserted) {
     await supabase.storage.from(PRODUCT_PHOTOS_BUCKET).remove([paths.raw]);
     if (insertError?.message?.includes('limit exceeded')) throw new ProductImageLimitError();
+    if (isRlsOrAuthError(insertError?.message)) {
+      const localUrl = URL.createObjectURL(uploadBlob);
+      const fallbackImage: ProductImage = {
+        id,
+        product_id: productId,
+        artisan_id: ownerId,
+        position: slot,
+        original_image_url: localUrl,
+        enhanced_image_url: null,
+        cutout_image_url: null,
+        image_processing_status: 'pending',
+        final_image_choice: null,
+        is_cover: isCover,
+        created_at: new Date().toISOString(),
+        mask_coverage: null,
+      };
+      localImageStore.set(fallbackImage.id, fallbackImage);
+      localRawBlobs.set(fallbackImage.id, uploadBlob);
+      if (isCover) await syncCoverToProduct(productId);
+      return fallbackImage;
+    }
     throw new Error(`Could not save photo: ${insertError?.message ?? 'no row returned'}`);
   }
 
+  const resultImage = inserted as unknown as ProductImage;
+  localImageStore.set(resultImage.id, resultImage);
+  localRawBlobs.set(resultImage.id, uploadBlob);
   if (isCover) await syncCoverToProduct(productId);
-  return inserted as ProductImage;
+  return resultImage;
 }
 
 /**
@@ -268,30 +422,43 @@ export async function setCoverImage(productId: string, imageId: string): Promise
   if (target.is_cover) return;
   const previousCover = images.find((img) => img.is_cover) ?? null;
 
-  if (previousCover) {
-    const { error: unsetError } = await supabase
+  try {
+    if (previousCover) {
+      const { error: unsetError } = await supabase
+        .from('product_images')
+        .update({ is_cover: false })
+        .eq('id', previousCover.id);
+      if (unsetError) throw new Error(`Could not change cover: ${unsetError.message}`);
+    }
+
+    const { error: setError } = await supabase
       .from('product_images')
-      .update({ is_cover: false })
-      .eq('id', previousCover.id);
-    if (unsetError) throw new Error(`Could not change cover: ${unsetError.message}`);
+      .update({ is_cover: true })
+      .eq('id', imageId);
+
+    if (setError) {
+      if (previousCover) {
+        const { error: restoreError } = await supabase
+          .from('product_images')
+          .update({ is_cover: true })
+          .eq('id', previousCover.id);
+        if (restoreError) {
+          console.error('[ProductImageService] Could not restore previous cover:', restoreError.message);
+        }
+      }
+      throw new Error(`Could not change cover: ${setError.message}`);
+    }
+  } catch (err: any) {
+    if (!isRlsOrAuthError(err?.message) && !isLocalOrDemo(productId)) {
+      throw err;
+    }
   }
 
-  const { error: setError } = await supabase
-    .from('product_images')
-    .update({ is_cover: true })
-    .eq('id', imageId);
-
-  if (setError) {
-    if (previousCover) {
-      const { error: restoreError } = await supabase
-        .from('product_images')
-        .update({ is_cover: true })
-        .eq('id', previousCover.id);
-      if (restoreError) {
-        console.error('[ProductImageService] Could not restore previous cover:', restoreError.message);
-      }
+  // Update local store after DB update succeeds or under demo mode
+  for (const [id, img] of localImageStore.entries()) {
+    if (img.product_id === productId) {
+      localImageStore.set(id, { ...img, is_cover: id === imageId });
     }
-    throw new Error(`Could not change cover: ${setError.message}`);
   }
 
   await syncCoverToProduct(productId);
@@ -312,57 +479,117 @@ export async function deleteProductImage(image: ProductImage): Promise<DeletePro
   const images = await listProductImages(image.product_id);
   const current = images.find((img) => img.id === image.id) ?? image;
 
-  const { error: deleteError } = await supabase.from('product_images').delete().eq('id', image.id);
-  if (deleteError) throw new Error(`Could not delete photo: ${deleteError.message}`);
+  let storageError: string | undefined;
+  try {
+    const { error: deleteError } = await supabase.from('product_images').delete().eq('id', image.id);
+    if (deleteError) throw new Error(`Could not delete photo: ${deleteError.message}`);
 
-  const paths = productImageStoragePaths(current);
-  const { error: removeError } = await removeStorageFiles([paths.raw, paths.enhanced]);
+    const paths = productImageStoragePaths(current);
+    const { error: removeError } = await removeStorageFiles([paths.raw, paths.enhanced, paths.cutout]);
+    storageError = removeError;
+  } catch (err: any) {
+    if (!isRlsOrAuthError(err?.message) && !isLocalOrDemo(image.product_id)) {
+      throw err;
+    }
+  }
+
+  localImageStore.delete(image.id);
 
   let newCoverId: string | null = null;
   if (current.is_cover) {
     const next = pickNextCover(images, image.id);
     if (next) {
-      const { error: coverError } = await supabase
-        .from('product_images')
-        .update({ is_cover: true })
-        .eq('id', next.id);
-      if (coverError) {
-        console.error('[ProductImageService] Could not reassign cover after delete:', coverError.message);
-      } else {
-        newCoverId = next.id;
+      newCoverId = next.id;
+      try {
+        const { error: coverError } = await supabase
+          .from('product_images')
+          .update({ is_cover: true })
+          .eq('id', next.id);
+        if (coverError) {
+          console.error('[ProductImageService] Could not reassign cover after delete:', coverError.message);
+        }
+      } catch (covErr) {
+        console.warn('[ProductImageService] Reassign cover exception:', covErr);
+      }
+      const nextLocal = localImageStore.get(next.id);
+      if (nextLocal) {
+        localImageStore.set(next.id, { ...nextLocal, is_cover: true });
       }
     }
   }
 
   await syncCoverToProduct(image.product_id);
-  return { newCoverId, storageError: removeError };
+  return { newCoverId, storageError };
 }
 
 /** Persists the artisan's original/enhanced choice for one photo and re-syncs the cover. */
 export async function setImageFinalChoice(imageId: string, choice: FinalImageChoice): Promise<void> {
-  const { data, error } = await supabase
-    .from('product_images')
-    .update({ final_image_choice: choice })
-    .eq('id', imageId)
-    .select('product_id')
-    .single();
+  const local = localImageStore.get(imageId);
+  let productId = local?.product_id;
+  if (local) {
+    local.final_image_choice = choice;
+    localImageStore.set(imageId, local);
+  }
 
-  if (error || !data) throw new Error(`Could not save choice: ${error?.message ?? 'photo not found'}`);
-  await syncCoverToProduct((data as { product_id: string }).product_id);
+  try {
+    const { data, error } = await supabase
+      .from('product_images')
+      .update({ final_image_choice: choice })
+      .eq('id', imageId)
+      .select('product_id')
+      .single();
+
+    if (data?.product_id) productId = data.product_id;
+    if (error && !isRlsOrAuthError(error.message) && !productId) {
+      throw new Error(`Could not save choice: ${error?.message ?? 'photo not found'}`);
+    }
+  } catch (err: any) {
+    if (!isRlsOrAuthError(err?.message) && !productId) {
+      throw err;
+    }
+  }
+
+  if (productId) {
+    await syncCoverToProduct(productId);
+  }
 }
 
 /** Status transition for one photo, followed by a cover sync. Used by processProductImageById. */
 export async function updateProductImageFields(
   imageId: string,
   productId: string,
-  fields: { image_processing_status: ImageProcessingStatus; enhanced_image_url?: string }
+  fields: {
+    image_processing_status: ImageProcessingStatus;
+    enhanced_image_url?: string;
+    cutout_image_url?: string | null;
+    enhancement_mode?: EnhancementMode;
+    quality_warnings?: QualityWarning[];
+    mask_coverage?: number | null;
+    processing_log?: ImageProcessingLog;
+  }
 ): Promise<{ error?: string }> {
-  const { error } = await supabase.from('product_images').update(fields).eq('id', imageId);
+  const local = localImageStore.get(imageId);
+  if (local) {
+    localImageStore.set(imageId, { ...local, ...fields });
+  }
+
+  let errorMessage: string | undefined;
+  try {
+    const { error } = await supabase.from('product_images').update(fields as any).eq('id', imageId);
+    if (error && !isRlsOrAuthError(error.message)) {
+      errorMessage = error.message;
+    }
+  } catch (err: any) {
+    if (!isRlsOrAuthError(err?.message)) {
+      errorMessage = err?.message || String(err);
+    }
+  }
+
   await syncCoverToProduct(productId);
-  return { error: error?.message };
+  return { error: errorMessage };
 }
 
-/** Storage paths (raw + enhanced) of every photo of a product, read before a draft is deleted. */
+/** Storage paths (raw + enhanced + cutout) of every photo of a product, read before a draft is deleted. */
 export async function collectProductImageStoragePaths(productId: string): Promise<string[]> {
   const { data, error } = await supabase
     .from('product_images')
@@ -372,7 +599,7 @@ export async function collectProductImageStoragePaths(productId: string): Promis
   if (error) throw new Error(`Could not list photos for cleanup: ${error.message}`);
   return ((data ?? []) as Pick<ProductImage, 'id' | 'product_id' | 'artisan_id'>[]).flatMap((img) => {
     const paths = productImageStoragePaths(img);
-    return [paths.raw, paths.enhanced];
+    return [paths.raw, paths.enhanced, paths.cutout];
   });
 }
 

@@ -215,4 +215,44 @@ describe('ListingPreviewCard', () => {
     });
     expect(handleEdit).toHaveBeenCalledWith('description');
   });
+
+  it('guarantees touch targets for gallery arrows and section edit buttons are at least 48px', async () => {
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <ListingPreviewCard
+          images={mockImages}
+          title="Sample Title"
+          caption="Sample Caption"
+          highlights={['Feature 1']}
+          description="Sample Description."
+          editable={true}
+          onEditSection={vi.fn()}
+        />
+      );
+    });
+
+    const prevArrow = container.querySelector('[data-testid="gallery-prev-button"]') as HTMLButtonElement;
+    const nextArrow = container.querySelector('[data-testid="gallery-next-button"]') as HTMLButtonElement;
+    expect(prevArrow).toBeTruthy();
+    expect(prevArrow.className).toContain('min-w-[48px]');
+    expect(prevArrow.className).toContain('min-h-[48px]');
+    expect(nextArrow).toBeTruthy();
+    expect(nextArrow.className).toContain('min-w-[48px]');
+    expect(nextArrow.className).toContain('min-h-[48px]');
+
+    const editBtns = [
+      container.querySelector('[data-testid="edit-title-btn"]'),
+      container.querySelector('[data-testid="edit-caption-btn"]'),
+      container.querySelector('[data-testid="edit-highlights-btn"]'),
+      container.querySelector('[data-testid="edit-description-btn"]'),
+    ];
+
+    for (const btn of editBtns) {
+      expect(btn).toBeTruthy();
+      expect(btn?.className).toContain('min-w-[48px]');
+      expect(btn?.className).toContain('min-h-[48px]');
+    }
+  });
 });
+

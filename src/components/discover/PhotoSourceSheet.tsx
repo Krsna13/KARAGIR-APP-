@@ -37,6 +37,7 @@ export const PhotoSourceSheet: React.FC<PhotoSourceSheetProps> = ({
     handleWebGalleryChange,
     errorInfo,
     clearError,
+    liveCameraElement,
   } = useImageCapture({
     onPhotoSelected: (blob, previewUrl) => {
       onPhotoSelected(blob, previewUrl);
@@ -74,14 +75,16 @@ export const PhotoSourceSheet: React.FC<PhotoSourceSheetProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/75 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
-      onClick={onClose}
-      data-testid="photo-source-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Select photo source"
-    >
+    <>
+      {liveCameraElement}
+      <div
+        className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/75 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+        onClick={onClose}
+        data-testid="photo-source-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Select photo source"
+      >
       {/* Hidden Web File Inputs */}
       <input
         ref={cameraInputRef}
@@ -215,5 +218,7 @@ export const PhotoSourceSheet: React.FC<PhotoSourceSheetProps> = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
+

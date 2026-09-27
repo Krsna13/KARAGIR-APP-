@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -11,6 +11,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -113,6 +138,119 @@ export type Database = {
         }
         Relationships: []
       }
+      material_allocations: {
+        Row: {
+          allocated_qty: number
+          artisan_id: string
+          batch_id: string
+          created_at: string
+          id: string
+          project_label: string
+          project_ref: string | null
+        }
+        Insert: {
+          allocated_qty: number
+          artisan_id: string
+          batch_id: string
+          created_at?: string
+          id?: string
+          project_label: string
+          project_ref?: string | null
+        }
+        Update: {
+          allocated_qty?: number
+          artisan_id?: string
+          batch_id?: string
+          created_at?: string
+          id?: string
+          project_label?: string
+          project_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_allocations_artisan_id_fkey"
+            columns: ["artisan_id"]
+            isOneToOne: false
+            referencedRelation: "artisans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_allocations_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "material_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_batches: {
+        Row: {
+          artisan_id: string
+          category: string
+          created_at: string
+          grade: string | null
+          id: string
+          invoice_number: string | null
+          material_code: string
+          material_name: string
+          passport_url: string | null
+          purchase_date: string | null
+          purchased_qty: number
+          supplier_batch_code: string | null
+          supplier_location: string | null
+          supplier_name: string
+          traceability_status: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          artisan_id: string
+          category: string
+          created_at?: string
+          grade?: string | null
+          id?: string
+          invoice_number?: string | null
+          material_code: string
+          material_name: string
+          passport_url?: string | null
+          purchase_date?: string | null
+          purchased_qty: number
+          supplier_batch_code?: string | null
+          supplier_location?: string | null
+          supplier_name: string
+          traceability_status?: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          artisan_id?: string
+          category?: string
+          created_at?: string
+          grade?: string | null
+          id?: string
+          invoice_number?: string | null
+          material_code?: string
+          material_name?: string
+          passport_url?: string | null
+          purchase_date?: string | null
+          purchased_qty?: number
+          supplier_batch_code?: string | null
+          supplier_location?: string | null
+          supplier_name?: string
+          traceability_status?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_batches_artisan_id_fkey"
+            columns: ["artisan_id"]
+            isOneToOne: false
+            referencedRelation: "artisans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       materials: {
         Row: {
           created_at: string | null
@@ -195,38 +333,53 @@ export type Database = {
         Row: {
           artisan_id: string
           created_at: string
+          cutout_image_url: string | null
           enhanced_image_url: string | null
+          enhancement_mode: string | null
           final_image_choice: string | null
           id: string
           image_processing_status: string
           is_cover: boolean
+          mask_coverage: number | null
           original_image_url: string | null
           position: number
+          processing_log: Json | null
           product_id: string
+          quality_warnings: string[] | null
         }
         Insert: {
           artisan_id: string
           created_at?: string
+          cutout_image_url?: string | null
           enhanced_image_url?: string | null
+          enhancement_mode?: string | null
           final_image_choice?: string | null
           id?: string
           image_processing_status?: string
           is_cover?: boolean
+          mask_coverage?: number | null
           original_image_url?: string | null
           position: number
+          processing_log?: Json | null
           product_id: string
+          quality_warnings?: string[] | null
         }
         Update: {
           artisan_id?: string
           created_at?: string
+          cutout_image_url?: string | null
           enhanced_image_url?: string | null
+          enhancement_mode?: string | null
           final_image_choice?: string | null
           id?: string
           image_processing_status?: string
           is_cover?: boolean
+          mask_coverage?: number | null
           original_image_url?: string | null
           position?: number
+          processing_log?: Json | null
           product_id?: string
+          quality_warnings?: string[] | null
         }
         Relationships: [
           {
@@ -275,6 +428,7 @@ export type Database = {
           material: string | null
           normalized_dimensions: Json | null
           original_image_url: string | null
+          photo_background: string | null
           price: number | null
           price_deterministic: number | null
           price_final: number | null
@@ -336,6 +490,7 @@ export type Database = {
           material?: string | null
           normalized_dimensions?: Json | null
           original_image_url?: string | null
+          photo_background?: string | null
           price?: number | null
           price_deterministic?: number | null
           price_final?: number | null
@@ -397,6 +552,7 @@ export type Database = {
           material?: string | null
           normalized_dimensions?: Json | null
           original_image_url?: string | null
+          photo_background?: string | null
           price?: number | null
           price_deterministic?: number | null
           price_final?: number | null
@@ -1543,6 +1699,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

@@ -20,12 +20,14 @@ import { PhotosStep } from './steps/PhotosStep';
 import { IdentifyStep } from './steps/IdentifyStep';
 import { DescribeStep } from './steps/DescribeStep';
 import { PreviewStep } from './steps/PreviewStep';
+import { PriceStep } from './steps/PriceStep';
 
 interface AddItemWizardProps {
   artisanId: string;
   speakingLanguage?: string | null;
   initialDraft?: ProductRecord | null;
   onExit: (savedMessage?: string | null) => void;
+  onPublish?: (draft: ProductRecord) => void;
   onLanguageSelected?: (lang: string) => void;
 }
 
@@ -105,6 +107,7 @@ export const AddItemWizard: React.FC<AddItemWizardProps> = ({
   speakingLanguage,
   initialDraft,
   onExit,
+  onPublish,
   onLanguageSelected,
 }) => {
   const {
@@ -121,11 +124,13 @@ export const AddItemWizard: React.FC<AddItemWizardProps> = ({
     handleNext,
     handleBack,
     handleExit,
+    handlePublish,
   } = useAddItemWizard({
     artisanId,
     speakingLanguage,
     initialDraft,
     onExit,
+    onPublish,
     onLanguageSelected,
   });
 
@@ -350,8 +355,15 @@ export const AddItemWizard: React.FC<AddItemWizardProps> = ({
           onDraftPatch={patchDraft}
           artisanId={artisanId}
         />
-      ) : (
-      /* Step Placeholder Content Panel (Stage 6.1 Skeleton for Steps 2-5) */
+      ) : currentStep === 4 && draftProduct ? (
+        <PriceStep
+          productId={draftProduct.id}
+          draft={draftProduct}
+          speakingLanguage={selectedLanguage}
+          onDraftPatch={patchDraft}
+        />
+      ) : currentStep === 5 && draftProduct ? (
+      /* Step Placeholder Content Panel (Stage 6.1 Skeleton for Step 5) */
       <div className="py-10 px-4 sm:px-8 flex flex-col items-center justify-center border-2 border-dashed border-[#2A1E17] bg-[#120B08]/70 rounded-2xl text-center space-y-3 shadow-inner min-h-[220px]">
         <div className="w-14 h-14 rounded-2xl bg-[#1A120E] border border-[#EA580C]/40 flex items-center justify-center text-[#EA580C] shadow-md">
           <CurrentIcon className="w-7 h-7" />
@@ -365,9 +377,7 @@ export const AddItemWizard: React.FC<AddItemWizardProps> = ({
             {t.comingSoon}
           </p>
           <p className="text-[11px] text-slate-400">
-            {currentStep === 3 && (selectedLanguage === 'mr' ? 'कारागीर पूर्वावलोकन आणि 3D कार्ड लवकरच जोडले जाईल.' : 'Artisan preview and 3D preview card will be added in Stage 6.6.')}
-            {currentStep === 4 && (selectedLanguage === 'mr' ? 'AI किंमत सहाय्यक लवकरच जोडले जाईल.' : 'AI dynamic pricing assistant will be wired in Stage 6.7.')}
-            {currentStep === 5 && (selectedLanguage === 'mr' ? 'स्टोअरफ्रंट प्रकाशन लवकरच सक्षम केले जाईल.' : 'Storefront publishing and verification will be enabled in Stage 6.9.')}
+            {selectedLanguage === 'mr' ? 'तुमची लिस्टिंग आता प्रकाशित करण्यासाठी तयार आहे.' : 'Your listing is ready to be published.'}
           </p>
         </div>
 
@@ -379,7 +389,7 @@ export const AddItemWizard: React.FC<AddItemWizardProps> = ({
           </div>
         )}
       </div>
-      )}
+      ) : null}
 
       {/* Bottom Action Buttons (Min 48px Touch Targets) */}
       <div className="flex items-center justify-between pt-2 border-t border-[#2A1E17]">
@@ -399,12 +409,12 @@ export const AddItemWizard: React.FC<AddItemWizardProps> = ({
         {isPublishStep ? (
           <button
             type="button"
-            disabled={true}
-            className="min-h-[48px] px-6 py-2.5 rounded-xl bg-slate-800 text-slate-500 border border-slate-700 text-xs font-bold flex items-center space-x-2 opacity-60 cursor-not-allowed shadow"
-            title="Publishing will be enabled in Stage 6.9"
+            onClick={handlePublish}
+            disabled={!draftProduct}
+            className="min-h-[48px] px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center space-x-2 shadow cursor-pointer transition-all active:scale-95"
           >
             <Send className="w-4 h-4" />
-            <span>{t.publishDisabled}</span>
+            <span>Publish / प्रकाशित करा</span>
           </button>
         ) : (
           <button

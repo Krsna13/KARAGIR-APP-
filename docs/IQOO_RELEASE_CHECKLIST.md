@@ -7,4 +7,6 @@
 - [x] **Deterministic Pricing**: Volumetric calculations based on dimensions and verified material rates.
 - [x] **Digital Escrow Vault**: Milestone-based fund locking and release upon photographic proof.
 - [x] **Artisan Studio**: Real-time opportunity radar, quotation builder, and wallet payouts.
+- [x] **AI-Assisted Add Item Wizard**: Photo-driven Identify → Describe → Preview flow with voice Q&A and bilingual (EN/HI) listing generation (Stage 6.4–6.6).
+- [x] **Dev Diagnostics Page**: Gated device/AI capability check screen for debugging on-device bridges before release builds.
 - [x] **TypeScript & Bundle Verification**: 0 compilation errors across production build.

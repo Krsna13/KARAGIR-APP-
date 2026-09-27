@@ -73,8 +73,12 @@ export const ProductPhotoCapture: React.FC<ProductPhotoCaptureProps> = ({
    * mobile, accessible HTML5 file input on web with permission fallbacks).
    * Same hook used by the buyer-side PhotoSourceSheet (Stage 5.2).
    */
-  const { captureFromCamera, cameraInputRef: fileInputRef, handleWebCameraChange: handleWebFileSelect } =
-    useImageCapture({
+  const {
+    captureFromCamera,
+    cameraInputRef: fileInputRef,
+    handleWebCameraChange: handleWebFileSelect,
+    liveCameraElement,
+  } = useImageCapture({
       onPhotoSelected: (blob, url) => {
         setPhotoBlob(blob);
         setPreviewUrl(url);
@@ -242,6 +246,8 @@ export const ProductPhotoCapture: React.FC<ProductPhotoCaptureProps> = ({
         data-testid="camera-file-input"
         aria-label="Upload product photo"
       />
+
+      {liveCameraElement}
 
       {/* Top Header / Context */}
       <div className="flex items-center justify-between pb-3 border-b border-[#241711]">

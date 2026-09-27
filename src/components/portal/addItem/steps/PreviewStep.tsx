@@ -21,9 +21,10 @@ import {
   AlertTriangle,
   Mic,
   X,
+  Pencil,
 } from 'lucide-react';
 import { ListingPreviewCard } from './ListingPreviewCard';
-import { VoiceInputButton } from '../../../voice/VoiceInputButton';
+import { VoiceOrTypeInput } from '../../../voice/VoiceOrTypeInput';
 import { speakText } from '../../../../config/languages';
 import { listProductImages } from '../../../../services/productImageService';
 import { getArtisanProfile } from '../../../../services/storageService';
@@ -44,11 +45,21 @@ import type {
   ListingSection,
 } from '../../../../types/product';
 import type { VoiceFieldSpec } from '../../../../types/voice';
-import type { ArtisanListingProfile } from '../../../../../supabase/functions/generate-listing/validation';
+import {
+  type ArtisanListingProfile,
+  findPriceMention,
+} from '../../../../../supabase/functions/generate-listing/validation';
 import { saveDraft } from '../../../../services/draftService';
+import { assertValidProductPatch } from '../../../../components/portal/addItem/__tests__/patchValidator';
 import type { Database } from '../../../../lib/supabase/database.types';
 
 type ProductUpdate = Database['public']['Tables']['products']['Update'];
+export type ProductDraftPatch = ProductUpdate;
+
+function validateAndSave(productId: string, patch: ProductUpdate): Promise<ProductRecord | null> {
+  assertValidProductPatch(patch as Record<string, unknown>);
+  return saveDraft(productId, patch);
+}
 
 export interface PreviewStepProps {
   productId: string;
@@ -71,10 +82,20 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [failedFactsHash, setFailedFactsHash] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
-  // Voice revision modal state
+  // Section revision modal state
   const [editingSection, setEditingSection] = useState<ListingSection | null>(null);
+  const [sectionEditMode, setSectionEditMode] = useState<'voice' | 'manual'>('voice');
+  const [manualText, setManualText] = useState<string>('');
+  const [manualEditError, setManualEditError] = useState<string | null>(null);
+  const [syncOffer, setSyncOffer] = useState<{
+    section: ListingSection;
+    sourceLang: 'hi' | 'en';
+    targetLang: 'hi' | 'en';
+  } | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [isRevising, setIsRevising] = useState(false);
   const [revisionError, setRevisionError] = useState<string | null>(null);
 
@@ -82,6 +103,13 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
   const [showFactsChangedPrompt, setShowFactsChangedPrompt] = useState(false);
 
   const mountedRef = useRef(true);
+
+  const notifyPatch = useCallback(
+    (patch: ProductDraftPatch | Partial<ProductRecord>) => {
+      onDraftPatch(patch as unknown as Partial<ProductRecord>);
+    },
+    [onDraftPatch]
+  );
 
   // 1. Fetch product images and artisan profile on mount
   useEffect(() => {
@@ -143,10 +171,13 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
 
   // 2. Main AI Generation function
   const handleGenerateListing = useCallback(
-    async (notesOverride?: { original?: string; en?: string }) => {
+    async (notesOverride?: { original?: string; en?: string }, isManualRetry = false) => {
       setIsGenerating(true);
       setGenerationError(null);
       setShowFactsChangedPrompt(false);
+      if (isManualRetry) {
+        setFailedFactsHash(null);
+      }
 
       const effectiveDraft = {
         ...draft,
@@ -168,7 +199,8 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
       if (!mountedRef.current) return;
 
       if (result.success && result.listing) {
-        const patch: Partial<ProductRecord> = {
+        setFailedFactsHash(null);
+        const patch: ProductDraftPatch = {
           title_en: result.listing.title_en,
           title_hi: result.listing.title_hi,
           seo_caption_en: result.listing.seo_caption_en,
@@ -185,10 +217,11 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
           listing_approved: false,
         };
 
-        onDraftPatch(patch);
-        await saveDraft(productId, patch as ProductUpdate);
+        notifyPatch(patch);
+        await validateAndSave(productId, patch);
       } else {
         console.error('[PreviewStep] Listing generation failed:', result.error);
+        setFailedFactsHash(computeFactsHash(effectiveDraft));
         setGenerationError(
           "We couldn't write the listing. Try again or use a simple listing / विवरण नहीं बन सका। पुनः प्रयास करें या साधारण विवरण इस्तेमाल करें"
         );
@@ -196,29 +229,40 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
 
       setIsGenerating(false);
     },
-    [draft, artisanProfile, speakingLanguage, onDraftPatch, productId]
+    [draft, artisanProfile, speakingLanguage, notifyPatch, productId]
   );
 
   // 3. Auto-generate on entering:
   // - If no listing exists, generate automatically
   // - If listing exists, is NOT approved, and facts hash differs: regenerate automatically (no prompt)
   // - If listing exists, IS approved, and facts hash differs: show prompt so artisan can choose
+  // - Fix B: If generation failed for the current facts, do NOT auto-retry until artisan clicks Try again or facts change.
+  const currentFactsHash = computeFactsHash(draft);
+
   useEffect(() => {
-    if (!listingExists && !isGenerating && !generationError) {
+    const hasFailedForCurrentHash = failedFactsHash === currentFactsHash;
+
+    if (!listingExists && !isGenerating && !generationError && !hasFailedForCurrentHash) {
       handleGenerateListing();
-    } else if (listingExists && !draft.listing_approved && haveFactsChanged(draft) && !isGenerating) {
+    } else if (
+      listingExists &&
+      !draft.listing_approved &&
+      haveFactsChanged(draft) &&
+      !isGenerating &&
+      !hasFailedForCurrentHash
+    ) {
       handleGenerateListing();
     } else if (listingExists && draft.listing_approved && haveFactsChanged(draft)) {
       setShowFactsChangedPrompt(true);
     }
-  }, [listingExists, draft.listing_approved]);
+  }, [listingExists, draft.listing_approved, currentFactsHash, failedFactsHash]);
 
   // 4. Deterministic simple listing fallback
   const handleApplySimpleListing = useCallback(async () => {
     const simple = generateSimpleListing(draft, artisanProfile, speakingLanguage || 'hi');
     const hash = computeFactsHash(draft);
 
-    const patch: Partial<ProductRecord> = {
+    const patch: ProductDraftPatch = {
       title_en: simple.title_en,
       title_hi: simple.title_hi,
       seo_caption_en: simple.seo_caption_en,
@@ -234,10 +278,10 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
       listing_approved: false,
     };
 
-    onDraftPatch(patch);
+    notifyPatch(patch);
     setGenerationError(null);
-    await saveDraft(productId, patch as ProductUpdate);
-  }, [draft, artisanProfile, speakingLanguage, onDraftPatch, productId]);
+    await validateAndSave(productId, patch);
+  }, [draft, artisanProfile, speakingLanguage, notifyPatch, productId]);
 
   // 5. Audio read-aloud ("Listen / सुनें")
   const handlePlayAudio = useCallback(
@@ -296,7 +340,7 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
       if (!mountedRef.current) return;
 
       if (result.success && result.listing) {
-        const patch: Partial<ProductRecord> = {
+        const patch: ProductDraftPatch = {
           title_en: result.listing.title_en,
           title_hi: result.listing.title_hi,
           seo_caption_en: result.listing.seo_caption_en,
@@ -312,19 +356,19 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
           listing_approved: false,
         };
 
-        onDraftPatch(patch);
-        await saveDraft(productId, patch as ProductUpdate);
+        notifyPatch(patch);
+        await validateAndSave(productId, patch);
         setEditingSection(null);
       } else {
         console.error('[PreviewStep] Section revision failed:', result.error);
         setRevisionError(
-          "We couldn't update this section. Tap the mic and try again / यह भाग बदला नहीं जा सका। कृपया पुनः प्रयास करें।"
+          "We couldn't update this section. Try again / यह भाग बदला नहीं जा सका। कृपया पुनः प्रयास करें।"
         );
       }
 
       setIsRevising(false);
     },
-    [editingSection, draft, artisanProfile, speakingLanguage, currentListing, onDraftPatch, productId]
+    [editingSection, draft, artisanProfile, speakingLanguage, currentListing, notifyPatch, productId]
   );
 
   // 7. Extra notes ("Tell buyers anything else / और कुछ बताना है?")
@@ -335,27 +379,155 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
 
       if (!original.trim()) return;
 
-      const patch: Partial<ProductRecord> = {
+      const patch: ProductDraftPatch = {
         extra_notes_original: original,
         extra_notes_en: en,
         listing_approved: false,
       };
 
-      onDraftPatch(patch);
-      await saveDraft(productId, patch as ProductUpdate);
+      notifyPatch(patch);
+      await validateAndSave(productId, patch);
 
       // Re-generate listing incorporating new extra notes
       handleGenerateListing({ original, en });
     },
-    [onDraftPatch, productId, handleGenerateListing]
+    [notifyPatch, productId, handleGenerateListing]
   );
 
   // 8. Approval handler
   const handleApprove = useCallback(async () => {
     const patch: Partial<ProductRecord> = { listing_approved: true };
-    onDraftPatch(patch);
+    notifyPatch(patch);
     await approveDraftListing(productId);
-  }, [onDraftPatch, productId]);
+  }, [notifyPatch, productId]);
+
+  // Open revision modal with section and prefilled manual text
+  const openEditModal = useCallback(
+    (section: ListingSection, mode: 'voice' | 'manual' = 'voice') => {
+      setEditingSection(section);
+      setSectionEditMode(mode);
+      setRevisionError(null);
+      setManualEditError(null);
+      setSyncOffer(null);
+
+      if (section === 'title') {
+        setManualText(displayLang === 'hi' ? draft.title_hi || '' : draft.title_en || '');
+      } else if (section === 'caption') {
+        setManualText(displayLang === 'hi' ? draft.seo_caption_hi || '' : draft.seo_caption_en || '');
+      } else if (section === 'description') {
+        setManualText(displayLang === 'hi' ? draft.description_hi || '' : draft.description_en || '');
+      } else if (section === 'highlights') {
+        setManualText((displayLang === 'hi' ? draft.highlights_hi || [] : draft.highlights_en || []).join('\n'));
+      } else if (section === 'tags') {
+        setManualText((draft.search_tags || []).join(', '));
+      }
+    },
+    [displayLang, draft]
+  );
+
+  // Manual section text editing handler (skips risky-claim check, blocks price mentions, resets approval)
+  const handleSaveManualEdit = useCallback(async () => {
+    if (!editingSection) return;
+    setManualEditError(null);
+
+    // Reject price or currency mentions
+    const priceMention = findPriceMention(manualText);
+    if (priceMention) {
+      setManualEditError(
+        `Price or currency mentions ('${priceMention}') are not allowed in the listing / विवरण में कीमत या मुद्रा का उल्लेख वर्जित है`
+      );
+      return;
+    }
+
+    const patch: ProductDraftPatch = {
+      listing_approved: false,
+    };
+
+    if (editingSection === 'title') {
+      if (displayLang === 'hi') patch.title_hi = manualText.trim();
+      else patch.title_en = manualText.trim();
+    } else if (editingSection === 'caption') {
+      if (displayLang === 'hi') patch.seo_caption_hi = manualText.trim();
+      else patch.seo_caption_en = manualText.trim();
+    } else if (editingSection === 'description') {
+      if (displayLang === 'hi') patch.description_hi = manualText.trim();
+      else patch.description_en = manualText.trim();
+    } else if (editingSection === 'highlights') {
+      const bullets = manualText
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (displayLang === 'hi') patch.highlights_hi = bullets;
+      else patch.highlights_en = bullets;
+    } else if (editingSection === 'tags') {
+      const tags = manualText
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      patch.search_tags = tags;
+    }
+
+    notifyPatch(patch);
+    await validateAndSave(productId, patch);
+
+    // Offer translation to match the other language
+    const sourceLang = displayLang;
+    const targetLang = displayLang === 'hi' ? 'en' : 'hi';
+    setSyncOffer({
+      section: editingSection,
+      sourceLang,
+      targetLang,
+    });
+  }, [editingSection, manualText, displayLang, notifyPatch, productId]);
+
+  // Translate between languages to match manual edit
+  const handleSyncTranslation = useCallback(async () => {
+    if (!syncOffer) return;
+    const { section, sourceLang, targetLang } = syncOffer;
+    setIsSyncing(true);
+
+    const targetLangName = targetLang === 'hi' ? 'Hindi' : 'English';
+    const sourceLangName = sourceLang === 'hi' ? 'Hindi' : 'English';
+
+    const result = await invokeGenerateListing({
+      facts: draft,
+      artisanProfile,
+      speakingLanguage: speakingLanguage || 'hi',
+      mode: 'revise',
+      revise: {
+        current_listing: currentListing,
+        instruction: `Translate the updated ${sourceLangName} ${section} into ${targetLangName} so both language descriptions match.`,
+        section,
+      },
+    });
+
+    if (result.success && result.listing) {
+      const patch: ProductDraftPatch = {
+        title_en: result.listing.title_en,
+        title_hi: result.listing.title_hi,
+        seo_caption_en: result.listing.seo_caption_en,
+        seo_caption_hi: result.listing.seo_caption_hi,
+        highlights_en: result.listing.highlights_en,
+        highlights_hi: result.listing.highlights_hi,
+        description_en: result.listing.description_en,
+        description_hi: result.listing.description_hi,
+        search_tags: result.listing.search_tags,
+        summary_spoken: result.listing.summary_spoken,
+        listing_approved: false,
+      };
+
+      notifyPatch(patch);
+      await validateAndSave(productId, patch);
+      setEditingSection(null);
+      setSyncOffer(null);
+    } else {
+      setManualEditError(
+        `Failed to translate to ${targetLangName}: ${result.error || 'Unknown error'}`
+      );
+    }
+
+    setIsSyncing(false);
+  }, [syncOffer, draft, artisanProfile, speakingLanguage, currentListing, notifyPatch, productId]);
 
   // Voice specs
   const reviseFieldSpec: VoiceFieldSpec = useMemo(
@@ -470,9 +642,9 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
               type="button"
               onClick={async () => {
                 const updatedHash = computeFactsHash(draft);
-                const hashPatch: Partial<ProductRecord> = { listing_facts_hash: updatedHash };
-                onDraftPatch(hashPatch);
-                await saveDraft(productId, hashPatch as ProductUpdate);
+                const hashPatch: ProductDraftPatch = { listing_facts_hash: updatedHash };
+                notifyPatch(hashPatch);
+                await validateAndSave(productId, hashPatch);
                 setShowFactsChangedPrompt(false);
               }}
               className="px-4 py-2 rounded-xl bg-[#120B08] border border-[#2A1E17] hover:border-slate-500 text-slate-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
@@ -522,7 +694,7 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
           <div className="flex flex-wrap items-center gap-2 pt-1 pl-8">
             <button
               type="button"
-              onClick={() => handleGenerateListing()}
+              onClick={() => handleGenerateListing(undefined, true)}
               className="px-4 py-2 rounded-xl bg-[#EA580C] hover:bg-[#F97316] text-white text-xs font-bold transition-all shadow cursor-pointer"
               data-testid="error-retry-btn"
             >
@@ -600,10 +772,7 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
           shopName={artisanProfile?.shop_name}
           category={draft.category}
           editable={true}
-          onEditSection={(sec) => {
-            setEditingSection(sec);
-            setRevisionError(null);
-          }}
+          onEditSection={(sec) => openEditModal(sec)}
         />
       )}
 
@@ -633,12 +802,14 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
             </div>
           )}
 
-          <div className="flex items-center justify-end">
-            <VoiceInputButton
+          <div className="w-full flex justify-end">
+            <VoiceOrTypeInput
               field={extraNotesFieldSpec}
               speakingLanguage={speakingLanguage || 'hi'}
               onValueConfirmed={handleExtraNotesConfirmed}
               maxDurationSeconds={90}
+              inputTestId="extra-notes-type-input"
+              submitTestId="extra-notes-type-submit"
             />
           </div>
         </div>
@@ -650,54 +821,199 @@ export const PreviewStep: React.FC<PreviewStepProps> = ({
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           data-testid="voice-edit-modal"
         >
-          <div className="w-full max-w-md bg-[#1A120E] border border-[#2A1E17] rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="w-full max-w-md bg-[#1A120E] border border-[#2A1E17] rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-[#2A1E17] pb-3">
               <div className="space-y-0.5">
                 <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                  <Mic className="w-4 h-4 text-[#EA580C]" />
+                  <Pencil className="w-4 h-4 text-[#EA580C]" />
                   <span>Edit {editingSection} / अनुभाग बदलें</span>
                 </h3>
                 <p className="text-xs text-slate-400">
-                  What should change? / क्या बदलना है?
+                  {displayLang === 'hi' ? 'बोलकर या खुद लिखकर बदलें' : 'Speak revision or edit text directly'}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setEditingSection(null)}
-                className="w-8 h-8 rounded-lg bg-[#120B08] border border-[#2A1E17] text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                onClick={() => {
+                  setEditingSection(null);
+                  setSyncOffer(null);
+                }}
+                className="w-12 h-12 min-w-[48px] min-h-[48px] rounded-xl bg-[#120B08] border border-[#2A1E17] text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {isRevising ? (
-              <div className="py-8 flex flex-col items-center justify-center space-y-3 text-center">
-                <div className="w-8 h-8 border-2 border-[#EA580C] border-t-transparent rounded-full animate-spin" />
-                <p className="text-xs text-slate-300 font-medium">
-                  Applying revision with strict fact validation...
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Tap the microphone and describe what you want updated in the {editingSection}.
-                </p>
+            {/* Mode Switcher Tabs */}
+            <div className="grid grid-cols-2 p-1 bg-[#120B08] rounded-xl border border-[#2A1E17]">
+              <button
+                type="button"
+                onClick={() => {
+                  setSectionEditMode('voice');
+                  setSyncOffer(null);
+                }}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  sectionEditMode === 'voice'
+                    ? 'bg-[#EA580C] text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                data-testid="edit-mode-voice"
+              >
+                Voice / आवाज़
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSectionEditMode('manual');
+                  setSyncOffer(null);
+                }}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  sectionEditMode === 'manual'
+                    ? 'bg-[#EA580C] text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                data-testid="edit-mode-manual"
+              >
+                Edit text myself / खुद लिखें
+              </button>
+            </div>
 
-                {revisionError && (
-                  <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/50 text-xs text-red-300">
-                    {revisionError}
+            {/* Mode 1: Voice / Instruction via VoiceOrTypeInput */}
+            {sectionEditMode === 'voice' && (
+              <>
+                {isRevising ? (
+                  <div className="py-8 flex flex-col items-center justify-center space-y-3 text-center">
+                    <div className="w-8 h-8 border-2 border-[#EA580C] border-t-transparent rounded-full animate-spin" />
+                    <p className="text-xs text-slate-300 font-medium">
+                      Applying revision with strict fact validation...
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Tap the microphone or type below to describe what you want updated in {editingSection}.
+                    </p>
+
+                    {revisionError && (
+                      <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/50 text-xs text-red-300">
+                        {revisionError}
+                      </div>
+                    )}
+
+                    <div className="flex justify-center pt-2">
+                      <VoiceOrTypeInput
+                        field={reviseFieldSpec}
+                        speakingLanguage={speakingLanguage || 'hi'}
+                        onValueConfirmed={handleVoiceRevisionConfirmed}
+                        maxDurationSeconds={60}
+                        inputTestId="revise-type-input"
+                        submitTestId="revise-type-submit"
+                      />
+                    </div>
                   </div>
                 )}
+              </>
+            )}
 
-                <div className="flex justify-center pt-2">
-                  <VoiceInputButton
-                    field={reviseFieldSpec}
-                    speakingLanguage={speakingLanguage || 'hi'}
-                    onValueConfirmed={handleVoiceRevisionConfirmed}
-                    maxDurationSeconds={60}
-                  />
-                </div>
+            {/* Mode 2: Manual Direct Text Editing */}
+            {sectionEditMode === 'manual' && (
+              <div className="space-y-3">
+                {syncOffer ? (
+                  <div className="p-4 rounded-2xl bg-[#140D09] border border-amber-500/40 space-y-3 text-center" data-testid="sync-offer-card">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 mx-auto flex items-center justify-center">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-white">
+                        {syncOffer.targetLang === 'hi'
+                          ? 'Update Hindi to match? / क्या हिंदी को भी अपडेट करें?'
+                          : 'Update English to match? / क्या अंग्रेज़ी को भी अपडेट करें?'}
+                      </h4>
+                      <p className="text-xs text-slate-300">
+                        {syncOffer.targetLang === 'hi'
+                          ? 'We can translate your English edit into natural Hindi.'
+                          : 'We can translate your Hindi edit into professional English.'}
+                      </p>
+                    </div>
+
+                    {isSyncing ? (
+                      <div className="py-2 flex items-center justify-center gap-2 text-xs text-amber-300">
+                        <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                        <span>Translating / अनुवाद हो रहा है...</span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSyncOffer(null);
+                            setEditingSection(null);
+                          }}
+                          className="min-h-[44px] py-2 px-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold cursor-pointer"
+                          data-testid="sync-translate-skip-btn"
+                        >
+                          Keep as is / ऐसे ही रखें
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSyncTranslation}
+                          className="min-h-[44px] py-2 px-3 rounded-xl bg-[#EA580C] hover:bg-[#F97316] text-white text-xs font-bold cursor-pointer"
+                          data-testid="sync-translate-yes-btn"
+                        >
+                          Update / अपडेट करें
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <span>Editing {displayLang === 'hi' ? 'Hindi / हिंदी' : 'English / अंग्रेज़ी'} words</span>
+                      <span className="text-[11px] text-slate-500">Skips promotional checks; price strictly forbidden</span>
+                    </div>
+
+                    <textarea
+                      value={manualText}
+                      onChange={(e) => {
+                        setManualText(e.target.value);
+                        if (manualEditError) setManualEditError(null);
+                      }}
+                      rows={5}
+                      className="w-full p-3 rounded-xl bg-[#120B08] border border-[#2A1E17] focus:border-[#EA580C] text-sm text-white placeholder-slate-500 outline-none resize-none transition-colors"
+                      data-testid="manual-section-textarea"
+                      placeholder="Type words directly..."
+                    />
+
+                    {manualEditError && (
+                      <div
+                        className="p-3 rounded-xl bg-red-950/40 border border-red-500/50 text-xs text-red-300 flex items-start gap-2"
+                        data-testid="manual-edit-error"
+                      >
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+                        <span>{manualEditError}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditingSection(null)}
+                        className="min-h-[44px] px-4 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold cursor-pointer"
+                      >
+                        Cancel / रद्द करें
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveManualEdit}
+                        className="min-h-[44px] px-5 rounded-xl bg-[#EA580C] hover:bg-[#F97316] text-white text-xs font-bold shadow transition-all cursor-pointer"
+                        data-testid="manual-save-btn"
+                      >
+                        Save changes / बदलाव सहेजें
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

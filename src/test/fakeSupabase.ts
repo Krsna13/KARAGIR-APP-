@@ -196,6 +196,14 @@ export class FakeSupabase {
           this.storage.set(`${bucket}/${path}`, blob);
           return { data: { path }, error: null };
         },
+        download: async (path: string) => {
+          this.calls.push({ kind: 'download' as any, target: bucket, payload: path });
+          const failure = this.takeFailure(bucket, 'download');
+          if (failure) return { data: null, error: { message: failure } };
+          const blob = this.storage.get(`${bucket}/${path}`);
+          if (!blob) return { data: null, error: { message: 'Object not found' } };
+          return { data: blob, error: null };
+        },
         remove: async (paths: string[]) => {
           this.calls.push({ kind: 'remove', target: bucket, payload: [...paths] });
           const failure = this.takeFailure(bucket, 'remove');

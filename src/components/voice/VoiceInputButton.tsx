@@ -29,6 +29,7 @@ import {
   mergeDimensions,
   getMissingDimensionsPrompt,
 } from '../../utils/dimensionMerger';
+import { validateAudioQuality } from '../../utils/audioValidation';
 
 /** Stage 6.5: short bilingual label for each dimension key, for the confirm-screen display. */
 const DIMENSION_KEY_LABELS: Record<string, { en: string; hi: string }> = {
@@ -114,6 +115,18 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       setErrorMessage(null);
 
       try {
+        const isValidQuality = await validateAudioQuality(blob, { minDurationSeconds: 0.1, minRmsThreshold: 0 });
+        if (!isValidQuality) {
+          setState('unclear');
+          speakText(
+            speakingLanguage === 'en'
+              ? "The recording was too short or quiet, please say it clearly."
+              : 'आवाज़ बहुत छोटी या धीमी थी, कृपया फिर से बोलें।',
+            speakingLanguage
+          );
+          return;
+        }
+
         const result = await transcribeForField(blob, field, speakingLanguage);
 
         if (result.status === 'unclear' || result.status === 'off_topic') {
@@ -410,10 +423,18 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
             </div>
 
             <div className="space-y-1">
-              <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
-                {speakingLanguage === 'mr' ? 'We Understood / आम्ही हे समजलो:' : 'We Understood / हमने यह समझा:'}
-              </span>
-              <div className="text-xl font-bold text-white bg-[#1A120E] border border-[#2A1E17] rounded-2xl py-3 px-4 shadow-inner mt-1">
+              {(transcriptionResult?.confidence ?? 1) < 0.8 ? (
+                <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">
+                  {speakingLanguage === 'mr' ? 'तुम्ही हे बोललात का? / Did you say:' : 'क्या आपने यह कहा? / Did you say:'}
+                </span>
+              ) : (
+                <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
+                  {speakingLanguage === 'mr' ? 'We Understood / आम्ही हे समजलो:' : 'We Understood / हमने यह समझा:'}
+                </span>
+              )}
+              <div className={`text-xl font-bold text-white bg-[#1A120E] border rounded-2xl py-3 px-4 shadow-inner mt-1 ${
+                (transcriptionResult?.confidence ?? 1) < 0.8 ? 'border-amber-500/50' : 'border-[#2A1E17]'
+              }`}>
                 {transcriptionResult.value_display_spoken ||
                   transcriptionResult.value_display_hi ||
                   transcriptionResult.value_display_en}
@@ -440,7 +461,11 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
                 type="button"
                 data-testid="voice-say-again-button"
                 onClick={handleRetry}
-                className="min-h-[48px] py-2.5 px-3 rounded-2xl bg-stone-800 hover:bg-stone-700 active:scale-95 text-stone-200 font-semibold text-xs sm:text-sm flex flex-col items-center justify-center gap-0.5 border border-stone-700 transition-all"
+                className={`min-h-[48px] py-2.5 px-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 border transition-all ${
+                  (transcriptionResult?.confidence ?? 1) < 0.8
+                    ? 'bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-600'
+                    : 'bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-700'
+                } active:scale-95 font-semibold text-xs sm:text-sm`}
               >
                 <div className="flex items-center gap-1.5">
                   <RotateCcw className="w-4 h-4 text-stone-400" />
@@ -455,13 +480,17 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
                 type="button"
                 data-testid="voice-confirm-yes-button"
                 onClick={handleConfirmValue}
-                className="min-h-[48px] py-2.5 px-3 rounded-2xl bg-gradient-to-r from-[#EA580C] to-[#C2410C] hover:from-[#F97316] hover:to-[#EA580C] active:scale-95 text-white font-semibold text-xs sm:text-sm flex flex-col items-center justify-center gap-0.5 shadow-lg shadow-[#EA580C]/25 transition-all border border-[#EA580C]/50"
+                className={`min-h-[48px] py-2.5 px-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all border ${
+                  (transcriptionResult?.confidence ?? 1) < 0.8
+                    ? 'bg-stone-800 hover:bg-stone-700 text-white border-stone-600'
+                    : 'bg-gradient-to-r from-[#EA580C] to-[#C2410C] hover:from-[#F97316] hover:to-[#EA580C] text-white shadow-lg shadow-[#EA580C]/25 border-[#EA580C]/50'
+                } active:scale-95 font-semibold text-xs sm:text-sm`}
               >
                 <div className="flex items-center gap-1.5">
-                  <Check className="w-4 h-4" />
+                  <Check className={`w-4 h-4 ${(transcriptionResult?.confidence ?? 1) < 0.8 ? 'text-emerald-400' : ''}`} />
                   <span>Yes, correct</span>
                 </div>
-                <span className="text-[10px] text-orange-200 font-normal">
+                <span className={`text-[10px] font-normal ${(transcriptionResult?.confidence ?? 1) < 0.8 ? 'text-stone-400' : 'text-orange-200'}`}>
                   {speakingLanguage === 'mr' ? 'होय, योग्य आहे' : 'हाँ, सही है'}
                 </span>
               </button>

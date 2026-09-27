@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MOCK_RADAR_REQUESTS } from '../data/mockData';
 import type { IncomingRequestRadar } from '../types';
-import { Radar, Upload, Check, Send, FolderKanban, MessageSquare, Wallet, Settings, Hammer, Sparkles, X, ArrowLeft } from 'lucide-react';
+import { Radar, Upload, Check, Send, FolderKanban, MessageSquare, Wallet, Settings, Hammer, Sparkles, X, ArrowLeft, Boxes } from 'lucide-react';
 import { KaragirProfileCard } from './KaragirProfileCard';
 import { useKaragirStore } from '../context/KaragirStoreContext';
 import { useEscrow } from '../context/EscrowContext';
@@ -9,6 +9,7 @@ import { WorkshopProfileEditor } from './WorkshopProfileEditor';
 import { CatalogEditor } from './CatalogEditor';
 import { MilestoneTracker } from './MilestoneTracker';
 import { WithdrawModal } from './WithdrawModal';
+import { MaterialRegistry } from './portal/MaterialRegistry';
 
 interface ArtisanPortalProps {
   onBackToBuyer?: () => void;
@@ -18,7 +19,7 @@ export const ArtisanPortal: React.FC<ArtisanPortalProps> = ({ onBackToBuyer }) =
   const { storeData, saveStoreProfile, addWorkItem } = useKaragirStore();
   const { wallet } = useEscrow();
   
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'radar' | 'projects' | 'messages' | 'earnings' | 'profile' | 'catalog'>('radar');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'radar' | 'projects' | 'messages' | 'earnings' | 'profile' | 'catalog' | 'materials'>('radar');
   const [activeSubTab, setActiveSubTab] = useState<'Dashboard' | 'Directory' | 'Showcase'>('Dashboard');
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [hubTab, setHubTab] = useState<'radar' | 'enquiries'>('radar');
@@ -61,6 +62,7 @@ export const ArtisanPortal: React.FC<ArtisanPortalProps> = ({ onBackToBuyer }) =
     { id: 'radar', label: 'Radar', icon: Radar },
     { id: 'projects', label: 'Projects (4)', icon: FolderKanban },
     { id: 'catalog', label: 'Catalog', icon: Hammer },
+    { id: 'materials', label: 'Materials', icon: Boxes },
     { id: 'messages', label: 'Quotes', icon: MessageSquare },
     { id: 'earnings', label: 'Wallet', icon: Wallet },
     { id: 'profile', label: 'Profile', icon: Settings },
@@ -360,11 +362,16 @@ export const ArtisanPortal: React.FC<ArtisanPortalProps> = ({ onBackToBuyer }) =
 
         {/* Catalog & Categories Tab */}
         {activeSidebarTab === 'catalog' && (
-          <CatalogEditor 
-            storeData={storeData} 
-            addWorkItem={addWorkItem} 
-            saveStoreProfile={saveStoreProfile} 
+          <CatalogEditor
+            storeData={storeData}
+            addWorkItem={addWorkItem}
+            saveStoreProfile={saveStoreProfile}
           />
+        )}
+
+        {/* Material Registry Tab */}
+        {activeSidebarTab === 'materials' && (
+          <MaterialRegistry storeData={storeData} />
         )}
 
       </main>

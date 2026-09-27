@@ -8,7 +8,7 @@
 import type { Database } from '../../../../lib/supabase/database.types';
 
 export type ProductUpdate = Database['public']['Tables']['products']['Update'];
-export type ProductUpdateKey = keyof ProductUpdate;
+export type ProductUpdateKey = keyof ProductUpdate; 
 
 /**
  * All allowed column keys for updating the products table, derived from Supabase schema.

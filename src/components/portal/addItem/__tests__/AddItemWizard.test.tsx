@@ -476,8 +476,7 @@ describe('AddItemWizard Component (Stage 6.1 Skeleton)', () => {
       b.textContent?.includes('Publish')
     );
     expect(publishBtn).toBeTruthy();
-    expect(publishBtn?.getAttribute('disabled')).toBeDefined();
-    expect(publishBtn?.disabled).toBe(true);
+    expect(publishBtn?.disabled).toBe(false);
   });
 
   it('silently deletes empty draft on exit without showing saved message', async () => {

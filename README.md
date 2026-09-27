@@ -205,6 +205,7 @@ graph TD
   - **Quote Generator**: Pre-populates dimensions and specifications; allows artisans to submit formal bids in 1 tap.
   - **Workshop Profile Editor**: Customizes storefront bio, tags, cover banner, and 15s video reels.
   - **Catalog Manager**: Adds bespoke products with custom multi-view studio galleries.
+  - **AI Add Item Wizard**: Guided **Identify → Describe → Preview** flow ([`AddItemWizard.tsx`](file:///c:/Users/krish/OneDrive/Desktop/KARAGIR%20APP/src/components/portal/addItem/AddItemWizard.tsx)) — photos are analyzed by the `identify-product` edge function (category/material/shape/finish), the artisan fills structured details via voice Q&A, and the `generate-listing` edge function drafts a bilingual (English/Hindi) buyer-facing listing with a no-fabrication validation pass and deterministic fallback.
   - **Digital Wallet**: Displays locked escrow vs. available balance with direct bank withdrawal triggers.
 
 ### 5.7 Cross-Device Continuity & OfficeKit Layer
@@ -381,6 +382,32 @@ npm install
 npm run dev
 ```
 The application will launch on `http://localhost:5173/KARAGIR-APP-/`.
+
+### 2b. Testing on Mobile Phone over Local WiFi (HTTPS)
+
+Modern mobile browsers strictly require **HTTPS** to grant camera hardware access via `navigator.mediaDevices.getUserMedia`. Kaaragir includes a dedicated `dev:phone` script that spins up Vite with `@vitejs/plugin-basic-ssl` and binds to your laptop's LAN IP:
+
+```bash
+npm run dev:phone
+```
+
+When started, it clearly displays your local network URL:
+```
+📱 ========================================================
+   PHONE TESTING SERVER (HTTPS + LAN ENABLED)
+   🔗 Phone URL: https://<laptop-ip>:5173/KARAGIR-APP-/
+   📶 Make sure your phone and laptop are on the same WiFi.
+   🔒 Open the link in Chrome/Safari on your phone and
+      tap "Advanced" -> "Proceed" to accept the certificate once.
+========================================================
+```
+
+**Quick Setup for Phone Testing:**
+1. Connect your phone and laptop to the **same WiFi network**.
+2. Open the printed HTTPS URL (`https://<laptop-ip>:5173/KARAGIR-APP-/`) in your phone's browser (Chrome or Safari).
+3. **Accept the certificate warning once**: Because Vite uses a local self-signed certificate for dev testing, tap **Advanced** (or *Details*) and tap **Proceed / Continue to site**.
+4. The in-app web camera ([LiveCameraView](file:///src/components/camera/LiveCameraView.tsx)) will now have full hardware access to stream your phone's camera feed directly inside the web app.
+
 
 ### 3. Build & Type Validation
 ```bash

@@ -97,6 +97,11 @@ export function getActiveBackend(): AIBackend {
  * Once the native GenieX Capacitor bridge is packaged, this function will route
  * on-device calls to the Snapdragon NPU accelerator.
  * 
+ * REAL DEVICE REPRODUCTION NOTE:
+ * While `@imgly/background-removal` is invoked asynchronously, its WebAssembly/WebGL inference
+ * can also heavily monopolize the CPU/GPU on real Android devices. This, combined with the 
+ * synchronously blocking OpenCV pipeline in `opencvEnhancer.ts`, leads to a full-page UI freeze.
+ * 
  * Runs image segmentation/background removal model.
  * 
  * @param imageBlob Raw image blob of product/craft

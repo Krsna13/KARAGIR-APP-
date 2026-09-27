@@ -23,6 +23,7 @@ import { fakeSupabase, productImageInvariants } from '../../../../test/fakeSupab
 import { enhancementQueue } from '../../../../services/imageProcessingQueue';
 import { runSegmentation } from '../../../../services/aiRuntimeService';
 import { correctLighting } from '../../../../services/lightingCorrectionService';
+import { clearLocalImageStore } from '../../../../services/productImageService';
 
 vi.mock('../../../../lib/supabase/client', async () => {
   const { fakeSupabase: fake } = await import('../../../../test/fakeSupabase');
@@ -123,6 +124,7 @@ describe('PhotosStep (Stage 6.2)', () => {
   };
 
   beforeEach(() => {
+    clearLocalImageStore();
     fakeSupabase.reset({
       products: [{ id: PRODUCT, artisan_id: ARTISAN, listing_status: 'draft' }],
       product_images: [],
@@ -200,7 +202,7 @@ describe('PhotosStep (Stage 6.2)', () => {
 
     expect(statusOf(0)).toBe('enhanced');
     const [row] = dbImages();
-    expect(row.enhanced_image_url).toBe(`https://fake.storage/${BUCKET}/${ARTISAN}/${PRODUCT}/${row.id}/enhanced.png`);
+    expect(row.enhanced_image_url).toBe(`https://fake.storage/${BUCKET}/${ARTISAN}/${PRODUCT}/${row.id}/enhanced.jpg`);
     expect(product().image_processing_status).toBe('enhanced');
 
     await click(q('open-review-0'));
@@ -216,7 +218,23 @@ describe('PhotosStep (Stage 6.2)', () => {
   it('failed + retry: shows the retry icon, and retry re-runs enhancement to success', async () => {
     await render();
     await addPhotoAt(0);
-    await act(async () => segmentationCalls[0].reject(new Error('inference failed')));
+    // Simulate a failure during upload so the whole pipeline fails
+    const originalFrom = fakeSupabase.client.storage.from;
+    fakeSupabase.client.storage.from = (bucket: string) => {
+      const bucketAPI = originalFrom(bucket);
+      return {
+        ...bucketAPI,
+        upload: async (path: string, file: any, opts: any) => {
+          if (path.includes('enhanced')) {
+            return { data: null, error: new Error('simulated upload failure') };
+          }
+          return bucketAPI.upload(path, file, opts);
+        },
+      } as any;
+    };
+    
+    // Resolve segmentation so it moves on to upload (which will fail)
+    await act(async () => segmentationCalls[0].resolve(new Blob(['seg'], { type: 'image/png' })));
     await flush();
 
     expect(statusOf(0)).toBe('failed');
@@ -224,10 +242,14 @@ describe('PhotosStep (Stage 6.2)', () => {
     expect(q('retry-photo-0')).not.toBeNull();
     expect(q('open-review-0')!.hasAttribute('disabled')).toBe(true);
 
+    // After we click retry, we need to restore upload so it succeeds
+    fakeSupabase.client.storage.from = originalFrom;
+
     await click(q('retry-photo-0'));
     expect(statusOf(0)).toBe('processing');
+    
+    // NOW it will call segmentation (since fetch succeeds)
     expect(segmentationCalls).toHaveLength(2);
-
     await act(async () => segmentationCalls[1].resolve(new Blob(['seg'], { type: 'image/png' })));
     await flush();
     expect(statusOf(0)).toBe('enhanced');
@@ -296,7 +318,8 @@ describe('PhotosStep (Stage 6.2)', () => {
     });
     fakeSupabase.invariants = productImageInvariants;
     fakeSupabase.storage.set(`${BUCKET}/${ARTISAN}/${PRODUCT}/a/raw.jpg`, new Blob(['r']));
-    fakeSupabase.storage.set(`${BUCKET}/${ARTISAN}/${PRODUCT}/a/enhanced.png`, new Blob(['e']));
+    fakeSupabase.storage.set(`${BUCKET}/${ARTISAN}/${PRODUCT}/a/enhanced.jpg`, new Blob(['e']));
+    fakeSupabase.storage.set(`${BUCKET}/${ARTISAN}/${PRODUCT}/a/cutout.png`, new Blob(['c']));
     await render();
 
     await click(q('delete-photo-0'));
@@ -312,7 +335,11 @@ describe('PhotosStep (Stage 6.2)', () => {
     ]);
     expect(fakeSupabase.storage.size).toBe(0);
     const removed = fakeSupabase.calls.find((c) => c.kind === 'remove')!.payload;
-    expect(removed).toEqual([`${ARTISAN}/${PRODUCT}/a/raw.jpg`, `${ARTISAN}/${PRODUCT}/a/enhanced.png`]);
+    expect(removed).toEqual([
+      `${ARTISAN}/${PRODUCT}/a/raw.jpg`,
+      `${ARTISAN}/${PRODUCT}/a/enhanced.jpg`,
+      `${ARTISAN}/${PRODUCT}/a/cutout.png`,
+    ]);
     expect(product().original_image_url).toBe(seedRow('b', 1).original_image_url);
     expect(onUploadedCountChange).toHaveBeenLastCalledWith(2);
   });

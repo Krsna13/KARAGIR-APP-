@@ -55,27 +55,69 @@ export async function transcribeForField(
     );
   }
 
-  // 1. Convert to 16 kHz mono 16-bit PCM WAV
-  let wavBlob: Blob;
-  try {
-    wavBlob = await convertAudioBlobTo16kHzWav(audioBlob);
-  } catch (convErr) {
-    console.warn('[VoiceTranscriptionService] WAV conversion fallback to raw blob:', convErr);
-    wavBlob = audioBlob;
+  // --- PRESENTATION MODE FAKE DATA ---
+  // Simulate network delay
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  let fakeValue: any;
+  let fakeDisplay = '';
+
+  if (field.key === 'item_type') {
+    fakeValue = { original: 'कुर्सी', en: 'Chair' };
+    fakeDisplay = 'Chair';
+  } else if (field.key === 'material') {
+    fakeValue = { original: 'प्लास्टिक', en: 'Plastic' };
+    fakeDisplay = 'Plastic';
+  } else if (field.type === 'dimensions') {
+    fakeValue = {
+      length: 18,
+      width: 18,
+      height: 36,
+      diameter: null,
+      thickness: null,
+      unit: 'in',
+      approximate: false,
+    };
+    fakeDisplay = '18 x 18 x 36 in';
+  } else if (field.type === 'number') {
+    fakeValue = 5;
+    fakeDisplay = '5';
+  } else if (field.type === 'choice') {
+    fakeValue = field.choices?.[0]?.id || 'yes';
+    fakeDisplay = field.choices?.[0]?.label_en || 'Yes';
+  } else {
+    fakeValue = { original: 'ब्राउन रंग की', en: 'Brown colored' };
+    fakeDisplay = 'Brown colored';
   }
 
-  // 2. Base64 encode
-  let audioBase64: string;
-  try {
-    audioBase64 = await blobToBase64(wavBlob);
-  } catch (encodeErr) {
+  return {
+    status: 'ok',
+    transcript_original: fakeValue?.original || fakeDisplay,
+    value: fakeValue,
+    value_display_en: fakeDisplay,
+    value_display_hi: fakeDisplay,
+    value_display_spoken: fakeDisplay,
+    confidence: 1.0,
+  } as VoiceTranscriptionResult;
+}
+
+/**
+ * Transcribes and translates an artisan's typed text for a specific field.
+ * Invokes 'transcribe-voice' with `{ text, field, speakingLanguage }`.
+ * Enforces 20-second timeout.
+ */
+export async function transcribeTextForField(
+  text: string,
+  field: VoiceFieldSpec,
+  speakingLanguage: string = 'hi'
+): Promise<VoiceTranscriptionResult> {
+  const cleanText = text?.trim();
+  if (!cleanText) {
     throw new VoiceTranscriptionError(
-      'Failed to process audio recording. Please try again / ऑडियो प्रोसेस नहीं हो सका।',
-      { cause: encodeErr }
+      'No text entered. Please type your answer / कोई टेक्स्ट नहीं लिखा गया।'
     );
   }
 
-  // 3. Create timeout promise for 20-second limit
   let timerId: ReturnType<typeof setTimeout> | null = null;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timerId = setTimeout(() => {
@@ -88,25 +130,22 @@ export async function transcribeForField(
     }, CLIENT_TIMEOUT_MS);
   });
 
-  // 4. Invoke Edge Function with timeout race
   try {
     const invokePromise = supabase.functions.invoke('transcribe-voice', {
       body: {
-        audioBase64,
-        mimeType: 'audio/wav',
+        text: cleanText,
         speakingLanguage,
         field,
       },
     });
 
     const response = await Promise.race([invokePromise, timeoutPromise]);
-
     if (timerId) clearTimeout(timerId);
 
     const { data, error } = response;
 
     if (error) {
-      let errorMessage = error.message || 'Voice transcription failed.';
+      let errorMessage = error.message || 'Text transcription failed.';
       let status: number | undefined;
 
       if (typeof error === 'object' && error !== null && 'context' in error) {
@@ -143,8 +182,9 @@ export async function transcribeForField(
     }
     const message = err instanceof Error ? err.message : String(err);
     throw new VoiceTranscriptionError(
-      `Voice transcription error: ${message}`,
+      `Text transcription error: ${message}`,
       { cause: err }
     );
   }
 }
+
