@@ -482,4 +482,210 @@ describe('VoiceInputButton Component (Stage 6.2)', () => {
     });
     container.remove();
   });
+
+  describe('VITE_DEMO_MODE gating for item_type', () => {
+    let mockDecodeAudioData: any;
+
+    const createMockAudioBuffer = (duration: number, rms: number) => {
+      const length = 44100;
+      const channelData = new Float32Array(length);
+      for (let i = 0; i < length; i++) {
+        channelData[i] = rms;
+      }
+      return {
+        duration,
+        numberOfChannels: 1,
+        getChannelData: () => channelData,
+      };
+    };
+
+    beforeEach(() => {
+      mockDecodeAudioData = vi.fn();
+      class MockAudioContext {
+        decodeAudioData = mockDecodeAudioData;
+      }
+      (globalThis as any).AudioContext = MockAudioContext;
+      (window as any).AudioContext = MockAudioContext;
+    });
+
+    afterEach(() => {
+      delete (globalThis as any).AudioContext;
+      delete (window as any).AudioContext;
+      vi.unstubAllEnvs();
+      delete process.env.VITE_DEMO_MODE;
+      vi.restoreAllMocks();
+    });
+
+    it('with VITE_DEMO_MODE off, speaking for item_type calls the real transcription service and never returns "Bed" from the script', async () => {
+      vi.stubEnv('VITE_DEMO_MODE', 'false');
+
+      // Valid loud audio (1.5s, rms 0.05)
+      mockDecodeAudioData.mockResolvedValue(createMockAudioBuffer(1.5, 0.05));
+
+      const transcribeSpy = vi.spyOn(voiceService, 'transcribeForField').mockResolvedValue({
+        status: 'ok',
+        transcript_original: 'कुर्सी',
+        value: { original: 'कुर्सी', en: 'Chair' },
+        value_display_en: 'Chair',
+        value_display_hi: 'कुर्सी',
+        value_display_spoken: 'कुर्सी',
+        confidence: 0.95,
+      });
+
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      const field: VoiceFieldSpec = {
+        key: 'item_type',
+        type: 'text',
+        question_en: 'What is this item?',
+      };
+
+      await act(async () => {
+        root.render(
+          <VoiceInputButton
+            field={field}
+            speakingLanguage="hi"
+            onValueConfirmed={vi.fn()}
+          />
+        );
+      });
+
+      // Start & Stop
+      await act(async () => {
+        (container.querySelector('[data-testid="voice-input-mic-button"]') as HTMLButtonElement).click();
+      });
+
+      await act(async () => {
+        (container.querySelector('[data-testid="voice-stop-button"]') as HTMLButtonElement).click();
+      });
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+      });
+
+      // Real transcription service was called
+      expect(transcribeSpy).toHaveBeenCalledTimes(1);
+      expect(transcribeSpy).toHaveBeenCalledWith(expect.any(Blob), field, 'hi');
+
+      // Confirm modal shows real transcript (Chair / कुर्सी), not Bed
+      const confirmModal = document.body.querySelector('[data-testid="voice-confirm-modal"]');
+      expect(confirmModal).not.toBeNull();
+      expect(confirmModal?.textContent).toContain('कुर्सी');
+      expect(confirmModal?.textContent).not.toContain('Bed');
+
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    });
+
+    it('with VITE_DEMO_MODE off, a 1-second silent clip for item_type is rejected by the quality check', async () => {
+      vi.stubEnv('VITE_DEMO_MODE', 'false');
+
+      // 1.0s silent audio (rms 0.0, below 0.005 threshold)
+      mockDecodeAudioData.mockResolvedValue(createMockAudioBuffer(1.0, 0.0));
+
+      const transcribeSpy = vi.spyOn(voiceService, 'transcribeForField');
+
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      const field: VoiceFieldSpec = {
+        key: 'item_type',
+        type: 'text',
+        question_en: 'What is this item?',
+      };
+
+      await act(async () => {
+        root.render(
+          <VoiceInputButton
+            field={field}
+            speakingLanguage="hi"
+            onValueConfirmed={vi.fn()}
+          />
+        );
+      });
+
+      // Start & Stop
+      await act(async () => {
+        (container.querySelector('[data-testid="voice-input-mic-button"]') as HTMLButtonElement).click();
+      });
+
+      await act(async () => {
+        (container.querySelector('[data-testid="voice-stop-button"]') as HTMLButtonElement).click();
+      });
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+      });
+
+      // Real transcription service must NOT have been called due to silence rejection
+      expect(transcribeSpy).not.toHaveBeenCalled();
+
+      // Unclear modal must be displayed
+      const unclearModal = document.body.querySelector('[data-testid="voice-unclear-modal"]');
+      expect(unclearModal).not.toBeNull();
+      expect(unclearModal?.textContent).toContain('Could Not Understand');
+      expect(unclearModal?.textContent).toContain('मैं समझ नहीं पाया');
+      expect(window.speechSynthesis.speak).toHaveBeenCalled();
+
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    });
+
+    it('with VITE_DEMO_MODE on, a 1-second silent clip for item_type bypasses quality check and returns Bed', async () => {
+      vi.stubEnv('VITE_DEMO_MODE', 'true');
+
+      // 1.0s silent audio (rms 0.0)
+      mockDecodeAudioData.mockResolvedValue(createMockAudioBuffer(1.0, 0.0));
+
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      const field: VoiceFieldSpec = {
+        key: 'item_type',
+        type: 'text',
+        question_en: 'What is this item?',
+      };
+
+      await act(async () => {
+        root.render(
+          <VoiceInputButton
+            field={field}
+            speakingLanguage="hi"
+            onValueConfirmed={vi.fn()}
+          />
+        );
+      });
+
+      // Start & Stop
+      await act(async () => {
+        (container.querySelector('[data-testid="voice-input-mic-button"]') as HTMLButtonElement).click();
+      });
+
+      await act(async () => {
+        (container.querySelector('[data-testid="voice-stop-button"]') as HTMLButtonElement).click();
+      });
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+      });
+
+      // Confirm modal must be displayed with the Bed script ('पलंग')
+      const confirmModal = document.body.querySelector('[data-testid="voice-confirm-modal"]');
+      expect(confirmModal).not.toBeNull();
+      expect(confirmModal?.textContent).toContain('पलंग');
+
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    });
+  });
 });

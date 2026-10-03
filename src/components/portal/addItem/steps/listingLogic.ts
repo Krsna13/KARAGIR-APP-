@@ -32,7 +32,6 @@ export interface CanonicalListingFacts {
     approximate?: boolean;
   } | null;
   technique: string;
-  labor_days: number | null;
   availability: string;
   quantity_available: number | null;
   lead_time_days: number | null;
@@ -61,7 +60,6 @@ export function extractCanonicalFacts(draft: ProductRecord | null | undefined): 
       suggested_use: [],
       dimensions: null,
       technique: '',
-      labor_days: null,
       availability: '',
       quantity_available: null,
       lead_time_days: null,
@@ -108,7 +106,6 @@ export function extractCanonicalFacts(draft: ProductRecord | null | undefined): 
     suggested_use: cleanArr(draft.suggested_use),
     dimensions: cleanDims,
     technique: (draft.technique || '').trim().toLowerCase(),
-    labor_days: draft.labor_days ?? null,
     availability: (draft.availability || '').trim().toLowerCase(),
     quantity_available: draft.quantity_available ?? null,
     lead_time_days: draft.lead_time_days ?? null,
@@ -245,7 +242,6 @@ export function generateSimpleListing(
   const itemType = (draft.item_type || 'Craft Item').trim();
   const material = (draft.material || 'Natural Material').trim();
   const technique = (draft.technique || 'Handcrafted').trim();
-  const laborDays = draft.labor_days ?? 1;
   const dimsText = formatDimensionsText(extractCanonicalFacts(draft).dimensions);
 
   // 1. Titles (max ~70 chars)
@@ -261,14 +257,14 @@ export function generateSimpleListing(
     `Handmade with authentic ${material}`,
     `Crafted using specialized ${technique} method`,
     dimsText ? `Dimensions: ${dimsText.en}` : `Carefully proportioned ${draft.shape_profile || 'artisan'} shape`,
-    `${laborDays} days of dedicated artisanal craftsmanship`,
+    `Made by hand by an Indian artisan`,
   ];
 
   const highlights_hi: string[] = [
     `प्रामाणिक ${material} से हस्तनिर्मित`,
     `${technique} कारीगरी द्वारा तैयार`,
     dimsText ? `आकार: ${dimsText.hi}` : `सुव्यवस्थित ${draft.shape_profile || 'शिल्प'} रूप`,
-    `${laborDays} दिनों का कुशल कारीगरी कार्य`,
+    `भारतीय कारीगर द्वारा हस्तनिर्मित`,
   ];
 
   if (draft.availability === 'made_to_order' && typeof draft.lead_time_days === 'number') {
@@ -301,8 +297,8 @@ export function generateSimpleListing(
   const storyAdditionEn = draft.story_en?.trim() ? ` ${draft.story_en.trim()}` : '';
   const storyAdditionHi = draft.story_original?.trim() ? ` ${draft.story_original.trim()}` : '';
 
-  const description_en = `This authentic ${itemType} is skillfully made by hand from ${material} using ${technique} techniques. Each piece reflects ${laborDays} days of dedicated artisan labor.${finishTextEn}${useTextEn}${storyAdditionEn}`;
-  const description_hi = `यह सुंदर ${itemType} ${material} से ${technique} विधि द्वारा हस्तनिर्मित किया गया है। इसे तैयार करने में ${laborDays} दिनों का कुशल परिश्रम लगा है।${finishTextHi}${useTextHi}${storyAdditionHi}`;
+  const description_en = `This authentic ${itemType} is skillfully made by hand from ${material} using ${technique} techniques.${finishTextEn}${useTextEn}${storyAdditionEn}`;
+  const description_hi = `यह सुंदर ${itemType} ${material} से ${technique} विधि द्वारा हस्तनिर्मित किया गया है।${finishTextHi}${useTextHi}${storyAdditionHi}`;
 
   // 5. Search tags (8-15)
   const search_tags = [
@@ -321,10 +317,10 @@ export function generateSimpleListing(
   // 6. Summary spoken (2-3 sentences)
   const summary_spoken =
     speakingLanguage === 'mr'
-      ? `हे हस्तनिर्मित ${material} ${itemType} तयार करण्यासाठी ${laborDays} दिवस लागले. याचे तपशील तपासले आहेत.`
+      ? `हे हस्तनिर्मित ${material} ${itemType} तयार केले आहे. याचे तपशील तपासले आहेत.`
       : speakingLanguage === 'en'
-      ? `This handcrafted ${material} ${itemType} took ${laborDays} days to make. All details are verified from your confirmed facts.`
-      : `यह हस्तनिर्मित ${material} ${itemType} बनाने में ${laborDays} दिन लगे हैं। आपके विवरण के अनुसार यह सूची तैयार की गई है।`;
+      ? `This handcrafted ${material} ${itemType} is ready for review. All details are verified from your confirmed facts.`
+      : `यह हस्तनिर्मित ${material} ${itemType} तैयार है। आपके विवरण के अनुसार यह सूची तैयार की गई है।`;
 
   return {
     title_en,

@@ -98,7 +98,6 @@ const baseDraft: ProductRecord = {
   item_type: 'Chair',
   material: 'Sheesham',
   category: 'Furniture',
-  labor_days: 4,
   dimensions: {
     shape: 'box',
     values: { length: 90, width: 45, height: 45 },

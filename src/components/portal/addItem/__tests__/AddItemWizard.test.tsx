@@ -99,7 +99,6 @@ vi.mock('../steps/DescribeStep', async () => {
               onDraftPatch({
                 dimensions: { shape: 'box', values: { length: 10, width: 10, height: 10 }, unit: 'cm', approximate: false },
                 technique: 'hand-carved',
-                labor_days: 3,
               }),
           },
           'partial'
@@ -391,7 +390,7 @@ describe('AddItemWizard Component (Stage 6.1 Skeleton)', () => {
     expect(container.textContent).toContain('Step 3 of 6');
   });
 
-  it('canProceed(2): Next is blocked until dimensions, technique, labor_days, availability and quantity are all confirmed', async () => {
+  it('canProceed(2): Next is blocked until dimensions, technique, availability and quantity are all confirmed', async () => {
     const step2Draft: ProductRecord = { ...sampleDraft, wizard_step: 2, shape_profile: 'box' };
     const root = createRoot(container);
     await act(async () => {
@@ -405,7 +404,7 @@ describe('AddItemWizard Component (Stage 6.1 Skeleton)', () => {
     expect(nextBtn.disabled).toBe(true);
     expect(container.querySelector('[data-testid="describe-required-hint"]')).not.toBeNull();
 
-    // dimensions + technique + labor_days alone is still not enough (no availability/quantity)
+    // dimensions + technique alone is still not enough (no availability/quantity)
     await act(async () => {
       (container.querySelector('[data-testid="stub-answer-describe-partial"]') as HTMLButtonElement).click();
     });

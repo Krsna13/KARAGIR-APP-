@@ -76,7 +76,6 @@ export function isDimensionsRawComplete(
 export interface DescribeAnswers {
   dimensions: ProductDimensionsRaw | null;
   technique: string | null;
-  labor_days: number | null;
   availability: 'ready' | 'made_to_order' | null;
   quantity_available: number | null;
   lead_time_days: number | null;
@@ -86,7 +85,6 @@ export function describeAnswersFromDraft(draft: Partial<ProductRecord> | null | 
   return {
     dimensions: (draft?.dimensions as ProductDimensionsRaw | undefined) ?? null,
     technique: draft?.technique ?? null,
-    labor_days: draft?.labor_days ?? null,
     availability: draft?.availability ?? null,
     quantity_available: draft?.quantity_available ?? null,
     lead_time_days: draft?.lead_time_days ?? null,
@@ -94,7 +92,7 @@ export function describeAnswersFromDraft(draft: Partial<ProductRecord> | null | 
 }
 
 /**
- * canProceed(2): dimensions complete for the shape, technique, labor_days,
+ * canProceed(2): dimensions complete for the shape, technique,
  * availability, plus quantity_available (if ready) or lead_time_days
  * (if made_to_order) to match.
  */
@@ -105,8 +103,6 @@ export function isDescribeStepComplete(
   if (!shape) return false;
   if (!isDimensionsRawComplete(answers.dimensions, shape)) return false;
   if (!answers.technique || !answers.technique.trim()) return false;
-  if (answers.labor_days === null || answers.labor_days === undefined || Number.isNaN(answers.labor_days)) return false;
-  if (answers.labor_days < 0) return false;
   if (answers.availability === 'ready') return answers.quantity_available !== null && answers.quantity_available !== undefined;
   if (answers.availability === 'made_to_order') return answers.lead_time_days !== null && answers.lead_time_days !== undefined;
   return false;
@@ -120,7 +116,6 @@ export type RequiredStep =
   | 'dimensions'
   | 'dimensions_thickness' // flat shape only, optional
   | 'technique'
-  | 'labor_days'
   | 'availability'
   | 'availability_followup'
   | 'done';
@@ -139,7 +134,6 @@ export function nextRequiredStep(
     return 'dimensions_thickness';
   }
   if (!answers.technique || !answers.technique.trim()) return 'technique';
-  if (answers.labor_days === null || answers.labor_days === undefined) return 'labor_days';
   if (!answers.availability) return 'availability';
   if (answers.availability === 'ready' && (answers.quantity_available === null || answers.quantity_available === undefined)) {
     return 'availability_followup';
@@ -182,16 +176,6 @@ export function thicknessQuestionText(speakingLanguage: string | null | undefine
 export function techniqueQuestionText(speakingLanguage: string | null | undefined): StepText {
   const lang = asDescribeLang(speakingLanguage);
   return pick(lang, 'How is it made?', 'यह कैसे बनाया जाता है?', 'हे कसे बनवले जाते?');
-}
-
-export function laborDaysQuestionText(speakingLanguage: string | null | undefined): StepText {
-  const lang = asDescribeLang(speakingLanguage);
-  return pick(
-    lang,
-    'How many days did it take to make?',
-    'इसे बनाने में कितने दिन लगे?',
-    'हे बनवायला किती दिवस लागले?'
-  );
 }
 
 export function availabilityQuestionText(speakingLanguage: string | null | undefined): StepText {

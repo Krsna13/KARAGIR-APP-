@@ -420,7 +420,32 @@ export const IdentifyStep: React.FC<IdentifyStepProps> = ({ productId, draft, sp
     );
   }
 
-  const failureBanner = !ai && (
+  const failureBanner = failed ? (
+    <div
+      className="p-3 rounded-2xl bg-amber-950/40 border border-amber-600/50 text-amber-100 text-xs flex items-start gap-2.5"
+      data-testid="identify-failure-banner"
+      role="status"
+    >
+      <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
+      <div className="flex-1 space-y-0.5">
+        <p className="font-bold">We could not recognise it automatically. Please tell us yourself.</p>
+        <p>
+          {lang === 'mr'
+            ? 'आपोआप ओळख पटू शकली नाही. कृपया स्वतः सांगा.'
+            : 'अपने आप पहचान नहीं हो सकी। कृपया खुद बताइए।'}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => runIdentification(images)}
+        className="min-w-[48px] min-h-[48px] -my-2 -mr-1 rounded-xl flex items-center justify-center text-amber-300 hover:text-white"
+        aria-label={lang === 'mr' ? 'Try again / पुन्हा प्रयत्न करा' : 'Try again / फिर से कोशिश करें'}
+        data-testid="retry-identify"
+      >
+        <RefreshCw className="w-5 h-5" />
+      </button>
+    </div>
+  ) : !ai && (
     <div
       className="p-4 rounded-2xl bg-gradient-to-br from-[#120B08] to-[#1A120E] border border-[#EA580C]/40 flex flex-col items-center justify-center gap-3 shadow-lg"
       data-testid="identify-object-by-ai-window"

@@ -118,7 +118,7 @@ ${speakingLanguage}
 
 --- MANDATORY NO-FABRICATION RULES ---
 1. EVERY CLAIM MUST COME FROM THE SUPPLIED FACTS. Do not invent features, materials, origins, or capabilities.
-2. NUMBERS RULE: Every number in the generated text MUST match a confirmed fact (dimensions, cm conversions, labor days, lead time, quantity, or artisan experience if provided). NEVER mention any other number.
+2. NUMBERS RULE: Every number in the generated text MUST match a confirmed fact (dimensions, cm conversions, lead time, quantity, or artisan experience if provided). NEVER mention any other number.
 3. ABSOLUTELY NO PRICE OR CURRENCY ANYWHERE. Do not mention ₹, Rs, INR, price, pricing, कीमत, मूल्य, दाम, rupee, rupees. Pricing will be decided in a later step.
 4. RISKY PROMOTIONAL CLAIMS PROHIBITED: Do NOT use words such as:
    - antique, vintage, heritage, eco-friendly, organic, sustainable, certified, GI tag, award-winning, generations, centuries, 100%, guaranteed

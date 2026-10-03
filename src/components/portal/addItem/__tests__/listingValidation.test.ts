@@ -3,7 +3,7 @@
  *
  * REAL LOGIC under test (NO MOCKS):
  * - validateListingResult: strict No-Fabrication enforcement
- * - extractAllowedNumbers: dimension values, cm-conversions, labor, quantity, lead time, artisan inputs
+ * - extractAllowedNumbers: dimension values, cm-conversions, quantity, lead time, artisan inputs
  * - Price & currency rejection
  * - Risky claims detection and story verification
  * - Experience years rules (unset rejected, '0 years' rejected, valid accepted)
@@ -51,7 +51,6 @@ const sampleFacts: ProductFactsInput = {
   },
   normalized_dimensions: { height: 10, diameter: 15 },
   technique: 'Wheel thrown',
-  labor_days: 2,
   availability: 'ready',
   quantity_available: 5,
   lead_time_days: null,
@@ -76,20 +75,20 @@ const validOutput: ListingOutput = {
     'Made with authentic terracotta clay',
     'Wheel thrown artisanal technique',
     'Height 10 cm with 15 cm diameter',
-    'Requires 2 days of skilled craft labor',
+    'Hand-finished by skilled artisans',
   ],
   highlights_hi: [
     'प्रामाणिक मिट्टी से हस्तनिर्मित',
     'पारंपरिक चाक शिल्प तकनीक',
     'ऊंचाई 10 सेमी और व्यास 15 सेमी',
-    '2 दिनों का कुशल कारीगरी कार्य',
+    'कुशल कारीगरों द्वारा हस्तनिर्मित',
   ],
   description_en:
-    'This traditional Diya is carefully wheel thrown using natural Clay in Jaipur. Taking 2 days of dedicated artisan work, it measures 10 cm in height and 15 cm in diameter. Ideal for puja and home decor.',
+    'This traditional Diya is carefully wheel thrown using natural Clay in Jaipur. It measures 10 cm in height and 15 cm in diameter. Ideal for puja and home decor.',
   description_hi:
-    'यह पारंपरिक दीया जयपुर में प्राकृतिक मिट्टी से चाक पर हस्तनिर्मित किया गया है। इसे बनाने में 2 दिनों की कुशल कारीगरी लगी है। इसकी ऊंचाई 10 सेमी और व्यास 15 सेमी है।',
+    'यह पारंपरिक दीया जयपुर में प्राकृतिक मिट्टी से चाक पर हस्तनिर्मित किया गया है। इसकी ऊंचाई 10 सेमी और व्यास 15 सेमी है।',
   search_tags: ['mitti diya', 'clay lamp', 'pottery diya', 'terracotta diya', 'puja diya', 'handmade diya', 'wheel thrown pottery', 'jaipur craft'],
-  summary_spoken: 'यह 10 सेमी का मिट्टी का दीया चाक पर 2 दिनों में तैयार किया गया है।',
+  summary_spoken: 'यह 10 सेमी का मिट्टी का दीया चाक पर तैयार किया गया है।',
 };
 
 describe('devanagariToStandardDigits & extractNumbersFromText', () => {
@@ -205,7 +204,7 @@ describe('No-Fabrication Validation Rules', () => {
     const outputWithVintage = {
       ...validOutput,
       description_en:
-        'This traditional Diya is carefully wheel thrown with a vintage aesthetic. Taking 2 days of work, it measures 10 cm in height and 15 cm in diameter.',
+        'This traditional Diya is carefully wheel thrown with a vintage aesthetic. It measures 10 cm in height and 15 cm in diameter.',
     };
 
     const res = validateListingResult(outputWithVintage, factsWithStoryClaim, sampleArtisan);
@@ -216,7 +215,7 @@ describe('No-Fabrication Validation Rules', () => {
     const outputWithSatat = {
       ...validOutput,
       description_hi:
-        'कारीगर सतत अभ्यास और पारंपरिक तकनीकों से यह सुंदर मिट्टी का दीया तैयार करते हैं। 10 सेमी ऊंचाई और 15 सेमी व्यास, 2 दिन की मेहनत।',
+        'कारीगर सतत अभ्यास और पारंपरिक तकनीकों से यह सुंदर मिट्टी का दीया तैयार करते हैं। 10 सेमी ऊंचाई और 15 सेमी व्यास।',
     };
 
     const res = validateListingResult(outputWithSatat, sampleFacts, sampleArtisan);
@@ -228,7 +227,7 @@ describe('No-Fabrication Validation Rules', () => {
     const outputWithSustainable = {
       ...validOutput,
       description_hi:
-        'यह उत्पाद सस्टेनेबल पर्यावरण सामग्री से बना है। 10 सेमी ऊंचाई और 15 सेमी व्यास, 2 दिन की मेहनत।',
+        'यह उत्पाद सस्टेनेबल पर्यावरण सामग्री से बना है। 10 सेमी ऊंचाई और 15 सेमी व्यास।',
     };
 
     const res = validateListingResult(outputWithSustainable, sampleFacts, sampleArtisan);
@@ -256,12 +255,12 @@ describe('No-Fabrication Validation Rules', () => {
         'Built with 3 drawers for convenient storage',
         'Features terracotta clay finish',
         'Dimensions: 10 cm height by 15 cm diameter',
-        'Requires 2 days of master craftsmanship',
+        'Hand-finished by master craftsmen',
       ],
       description_en:
-        'Crafted with 20 years of family dedication and heritage techniques, this piece includes 3 drawers. Taking 2 days of focused labor, it stands 10 cm in height and 15 cm in diameter.',
+        'Crafted with 20 years of family dedication and heritage techniques, this piece includes 3 drawers. It stands 10 cm in height and 15 cm in diameter.',
       description_hi:
-        '20 साल के पारिवारिक समर्पण और पारंपरिक तकनीकों से निर्मित, इस कृति में 3 दराज शामिल हैं। 10 सेमी ऊंचाई और 15 सेमी व्यास, 2 दिन का कुशल कार्य।',
+        '20 साल के पारिवारिक समर्पण और पारंपरिक तकनीकों से निर्मित, इस कृति में 3 दराज शामिल हैं। 10 सेमी ऊंचाई और 15 सेमी व्यास।',
     };
 
     const res = validateListingResult(outputWithAllowedNumbers, factsWithArtisanNumbers, { experience_years: null });
@@ -279,7 +278,7 @@ describe('No-Fabrication Validation Rules', () => {
     const outputWithExp = {
       ...validOutput,
       description_en:
-        'Crafted with 12 years of experience by master potters. Measuring 10 cm by 15 cm, it took 2 days to create.',
+        'Crafted with 12 years of experience by master potters. Measuring 10 cm by 15 cm, it is made to order.',
     };
 
     const res = validateListingResult(outputWithExp, sampleFacts, artisanWithoutExp);
@@ -310,7 +309,6 @@ describe('Facts Hash Stability & Change Detection', () => {
     material: 'Clay',
     category: 'Pottery',
     finish: 'natural',
-    labor_days: 2,
     dimensions: {
       shape: 'round',
       values: { height: 10, diameter: 15 },
@@ -344,9 +342,9 @@ describe('Facts Hash Stability & Change Detection', () => {
     };
     expect(computeFactsHash(modifiedDims)).not.toBe(originalHash);
 
-    // Change labor days
-    const modifiedLabor = { ...baseDraft, labor_days: 3 };
-    expect(computeFactsHash(modifiedLabor)).not.toBe(originalHash);
+    // Change technique
+    const modifiedTechnique = { ...baseDraft, technique: 'Hand built' };
+    expect(computeFactsHash(modifiedTechnique)).not.toBe(originalHash);
   });
 
   it('correctly detects facts change against stored listing_facts_hash', () => {
@@ -360,7 +358,7 @@ describe('Facts Hash Stability & Change Detection', () => {
 
     const changedDraft: ProductRecord = {
       ...draftWithHash,
-      labor_days: 4,
+      technique: 'Hand built',
     };
     expect(haveFactsChanged(changedDraft)).toBe(true);
   });
@@ -376,7 +374,6 @@ describe('Deterministic Simple Listing Fallback Template', () => {
     material: 'Wood',
     category: 'Woodwork',
     finish: 'polished',
-    labor_days: 3,
     availability: 'ready',
     quantity_available: 4,
     dimensions: {
@@ -406,7 +403,6 @@ describe('Deterministic Simple Listing Fallback Template', () => {
       material: testDraft.material,
       category: testDraft.category,
       finish: testDraft.finish,
-      labor_days: testDraft.labor_days,
       availability: testDraft.availability,
       quantity_available: testDraft.quantity_available,
       dimensions: testDraft.dimensions as any,

@@ -30,7 +30,6 @@ import {
   dimensionsQuestionText,
   hasAiDescribeFacts,
   isDescribeStepComplete,
-  laborDaysQuestionText,
   leadTimeQuestionText,
   nextRequiredStep,
   quantityQuestionText,
@@ -145,8 +144,6 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
       case 'dimensions_thickness':
         return 'technique';
       case 'technique':
-        return 'labor_days';
-      case 'labor_days':
         return 'availability';
       case 'availability':
         return 'availability_followup';
@@ -247,23 +244,6 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
     setPhase(advanceFrom('technique'));
   };
 
-  // ---- Required: labor_days ---------------------------------------------
-  const laborDaysField: VoiceFieldSpec = {
-    key: 'labor_days',
-    type: 'number',
-    question_en: laborDaysQuestionText(lang).en,
-    unit_hint: 'days',
-  };
-
-  const saveLaborDays = (value: unknown) => {
-    const days = typeof value === 'number' ? value : Number(value);
-    if (!Number.isFinite(days) || days < 0) return;
-    const nextAnswers = { ...stateRef.current.answers, labor_days: days };
-    setAnswers(nextAnswers);
-    persist({ labor_days: days });
-    setPhase(advanceFrom('labor_days'));
-  };
-
   // ---- Required: availability + follow-up -------------------------------
   const saveAvailability = (availability: 'ready' | 'made_to_order') => {
     const nextAnswers: DescribeAnswers = { ...stateRef.current.answers, availability };
@@ -317,8 +297,6 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
         return thicknessQuestionText(lang).spoken;
       case 'technique':
         return techniqueQuestionText(lang).spoken;
-      case 'labor_days':
-        return laborDaysQuestionText(lang).spoken;
       case 'availability':
         return availabilityQuestionText(lang).spoken;
       case 'availability_followup':
@@ -577,17 +555,6 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
     );
   }
 
-  if (phase === 'labor_days') {
-    return (
-      <div key={phase} className="space-y-4" data-testid="question-card-labor_days">
-        {questionHeader(laborDaysQuestionText(lang))}
-        <div className="w-full flex justify-center">
-          <VoiceOrTypeInput field={laborDaysField} speakingLanguage={lang} onValueConfirmed={saveLaborDays} />
-        </div>
-      </div>
-    );
-  }
-
   if (phase === 'availability') {
     return (
       <div key={phase} className="space-y-4" data-testid="question-card-availability">
@@ -682,7 +649,6 @@ export const DescribeStep: React.FC<DescribeStepProps> = ({ productId, draft, sp
         onEdit: () => setPhase('dimensions'),
       },
       { key: 'technique', en: 'Made by', value: answers.technique ?? '', onEdit: () => setPhase('technique') },
-      { key: 'labor_days', en: 'Days to make', value: answers.labor_days !== null ? `${answers.labor_days}` : '', onEdit: () => setPhase('labor_days') },
       {
         key: 'availability',
         en: 'Availability',

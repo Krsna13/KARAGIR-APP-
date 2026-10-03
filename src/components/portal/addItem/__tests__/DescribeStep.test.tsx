@@ -161,13 +161,11 @@ describe('DescribeStep (Stage 6.5)', () => {
 
   const skipFactsScreen = async () => click(q('facts-continue'));
 
-  /** Drives dimensions -> technique -> labor_days -> availability(ready) -> quantity, landing on summary. */
+  /** Drives dimensions -> technique -> availability(ready) -> quantity, landing on summary. */
   const completeBoxRequiredFlow = async () => {
     await answerByVoice(q('question-card-dimensions')!, dimsResult({ length: 10, width: 10, height: 10, unit: 'cm' }));
     await confirmVoice();
     await click(q('technique-tile-hand-carved'));
-    await answerByVoice(q('question-card-labor_days')!, numberResult(3));
-    await confirmVoice();
     await click(q('availability-tile-ready'));
     await answerByVoice(q('question-card-availability_followup')!, numberResult(2));
     await confirmVoice();
@@ -357,8 +355,6 @@ describe('DescribeStep (Stage 6.5)', () => {
     await answerByVoice(q('question-card-dimensions')!, dimsResult({ length: 5, width: 5, height: 5, unit: 'cm' }));
     await confirmVoice();
     await click(q('technique-tile-hand-carved'));
-    await answerByVoice(q('question-card-labor_days')!, numberResult(2));
-    await confirmVoice();
 
     await click(q('availability-tile-ready'));
     expect(q('question-card-availability_followup')!.textContent).toContain('How many do you have?');
@@ -378,8 +374,6 @@ describe('DescribeStep (Stage 6.5)', () => {
     await answerByVoice(q('question-card-dimensions')!, dimsResult({ length: 5, width: 5, height: 5, unit: 'cm' }));
     await confirmVoice();
     await click(q('technique-tile-hand-carved'));
-    await answerByVoice(q('question-card-labor_days')!, numberResult(2));
-    await confirmVoice();
 
     await click(q('availability-tile-made_to_order'));
     expect(q('question-card-availability_followup')!.textContent).toContain('How many days to make a new one?');
@@ -430,7 +424,7 @@ describe('DescribeStep (Stage 6.5)', () => {
     expect(row.care_instructions ?? null).toBeNull();
   });
 
-  it('required cards (dimensions, technique, labor_days, availability, availability_followup) never show a Skip button', async () => {
+  it('required cards (dimensions, technique, availability, availability_followup) never show a Skip button', async () => {
     await render();
     await click(q('choose-manual'));
     await skipFactsScreen();
@@ -442,9 +436,6 @@ describe('DescribeStep (Stage 6.5)', () => {
     expect(q('question-card-technique')!.querySelector('[data-testid^="skip-"]')).toBeNull();
     await click(q('technique-tile-hand-carved'));
 
-    expect(q('question-card-labor_days')!.querySelector('[data-testid^="skip-"]')).toBeNull();
-    await answerByVoice(q('question-card-labor_days')!, numberResult(1));
-    await confirmVoice();
 
     expect(q('question-card-availability')!.querySelector('[data-testid^="skip-"]')).toBeNull();
     await click(q('availability-tile-ready'));
@@ -508,6 +499,6 @@ describe('DescribeStep (Stage 6.5)', () => {
 
     expect(q('describe-choice')).toBeNull();
     expect(q('describe-facts')).toBeNull();
-    expect(q('question-card-labor_days')).not.toBeNull(); // resumes exactly where it left off
+    expect(q('question-card-availability')).not.toBeNull(); // resumes exactly where it left off
   });
 });

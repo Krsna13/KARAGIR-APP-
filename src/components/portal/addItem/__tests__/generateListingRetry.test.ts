@@ -18,7 +18,6 @@ import {
 const facts: ProductFactsInput = {
   item_type: 'Vase',
   material: 'Ceramic',
-  labor_days: 3,
   dimensions: {
     shape: 'round',
     values: { height: 25, diameter: 12 },
@@ -41,19 +40,19 @@ const validOutput: ListingOutput = {
   highlights_en: [
     'Handmade with quality ceramic',
     'Height 25 cm, diameter 12 cm',
-    '3 days of artisan craftsmanship',
+    'Made by skilled artisans',
     'Ready stock available',
   ],
   highlights_hi: [
     'गुणवत्तापूर्ण सेरामिक से निर्मित',
     'ऊंचाई 25 सेमी, व्यास 12 सेमी',
-    '3 दिनों की कुशल कारीगरी',
+    'कुशल कारीगरों द्वारा निर्मित',
     'तैयार स्टॉक उपलब्ध',
   ],
-  description_en: 'This elegant vase is made from ceramic in Jaipur. Measuring 25 cm in height and 12 cm in diameter, it takes 3 days to craft.',
-  description_hi: 'यह सुंदर फूलदान जयपुर में सेरामिक से तैयार किया गया है। इसकी ऊंचाई 25 सेमी और व्यास 12 सेमी है। इसे बनाने में 3 दिन लगे हैं।',
+  description_en: 'This elegant vase is made from ceramic in Jaipur. Measuring 25 cm in height and 12 cm in diameter, it is made by hand.',
+  description_hi: 'यह सुंदर फूलदान जयपुर में सेरामिक से तैयार किया गया है। इसकी ऊंचाई 25 सेमी और व्यास 12 सेमी है।',
   search_tags: ['ceramic vase', 'flower vase', 'handmade vase', 'home decor', 'jaipur ceramic', 'clay pottery'],
-  summary_spoken: 'यह सेरामिक फूलदान 25 सेमी ऊंचा है और 3 दिनों में तैयार किया गया है।',
+  summary_spoken: 'यह सेरामिक फूलदान 25 सेमी ऊंचा है और हस्तनिर्मित है।',
 };
 
 // Simulation of Edge Function execution loop

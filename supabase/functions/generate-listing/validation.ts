@@ -2,7 +2,7 @@
 /**
  * Stage 6.6: Pure validation function for generated product listings.
  * Enforces NO-FABRICATION rules:
- * 1. Numbers must strictly match confirmed facts (dimensions, cm-converted, labor_days,
+ * 1. Numbers must strictly match confirmed facts (dimensions, cm-converted,
  *    experience_years, quantity, lead time, or numbers present in artisan text inputs).
  * 2. No price or currency mentions anywhere (pricing is a separate wizard step).
  * 3. Risky claims (antique, vintage, heritage, eco-friendly, organic, sustainable, certified,
@@ -60,7 +60,6 @@ export interface ProductFactsInput {
   } | null;
   normalized_dimensions?: any;
   technique?: string | null;
-  labor_days?: number | null;
   availability?: string | null;
   quantity_available?: number | null;
   lead_time_days?: number | null;
@@ -117,11 +116,6 @@ export function extractAllowedNumbers(
   // 2. Normalized dimensions (cm conversions)
   if (facts.normalized_dimensions && typeof facts.normalized_dimensions === 'object') {
     Object.values(facts.normalized_dimensions).forEach(addNum);
-  }
-
-  // 3. Labor days
-  if (typeof facts.labor_days === 'number') {
-    addNum(facts.labor_days);
   }
 
   // 4. Quantity available

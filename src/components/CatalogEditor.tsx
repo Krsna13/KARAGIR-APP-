@@ -116,7 +116,7 @@ export const CatalogEditor: React.FC<Props> = ({ storeData, addWorkItem, saveSto
               galleryImages: draft.image_urls || [],
               price: draft.price || 0,
               material: draft.material || '',
-              leadTimeDays: draft.labor_days || 7,
+              leadTimeDays: draft.lead_time_days || 7,
             };
             addWorkItem(workItem);
           }}

@@ -32,6 +32,14 @@ export interface ProductRecord {
   price_deterministic?: number | null;
   price_final?: number | null;
   pricing_confidence?: number | null;
+
+  // Stage 6.7: the artisan's own production costs (INR). All nullable until entered.
+  cost_material?: number | null;
+  cost_labour?: number | null;
+  cost_hardware?: number | null;
+  cost_finishing?: number | null;
+  production_cost?: number | null;
+  target_margin?: number | null; // 0 <= x < 0.6
   final_image_choice?: 'original' | 'enhanced' | null;
 
   // Stage 6.4: Identify step. Confirmed values in the columns; the AI's
@@ -47,6 +55,7 @@ export interface ProductRecord {
 
   // Stage 6.5: Describe step facts (for the listing and the pricing model).
   technique?: string | null;
+  /** Retained column; no longer asked or used (Stage 6.7). */
   labor_days?: number | null;
   availability?: 'ready' | 'made_to_order' | null;
   quantity_available?: number | null;

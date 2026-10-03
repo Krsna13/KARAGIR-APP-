@@ -30,6 +30,7 @@ import {
   getMissingDimensionsPrompt,
 } from '../../utils/dimensionMerger';
 import { validateAudioQuality } from '../../utils/audioValidation';
+import { isDemoMode } from '../../config/demoMode';
 
 /** Stage 6.5: short bilingual label for each dimension key, for the confirm-screen display. */
 const DIMENSION_KEY_LABELS: Record<string, { en: string; hi: string }> = {
@@ -79,6 +80,8 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   const [accumulatedDimensions, setAccumulatedDimensions] = useState<VoiceDimensionsValue | null>(null);
   const [partialPrompt, setPartialPrompt] = useState<{ en: string; hi: string; spoken: string } | null>(null);
   const [errorMessage, setErrorMessage] = useState<{ title: string; subtitle: string } | null>(null);
+  const processAudioRef = useRef<((blob: Blob) => Promise<void>) | null>(null);
+  const isProcessingRef = useRef(false);
 
   // Audio recorder hook with a configurable per-field time limit (default 60s;
   // Stage 6.5 uses 90s for the artisan's story).
@@ -93,6 +96,9 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   } = useAudioRecorder({
     maxDurationSeconds,
     timesliceMs: 250,
+    onRecordingComplete: (blob) => {
+      processAudioRef.current?.(blob);
+    },
   });
 
   // Track permission errors from the hook
@@ -111,20 +117,26 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
 
   const processAudioForField = useCallback(
     async (blob: Blob) => {
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
       setState('understanding');
       setErrorMessage(null);
 
       try {
-        const isValidQuality = await validateAudioQuality(blob, { minDurationSeconds: 0.1, minRmsThreshold: 0 });
-        if (!isValidQuality) {
-          setState('unclear');
-          speakText(
-            speakingLanguage === 'en'
-              ? "The recording was too short or quiet, please say it clearly."
-              : 'आवाज़ बहुत छोटी या धीमी थी, कृपया फिर से बोलें।',
-            speakingLanguage
-          );
-          return;
+        // Enforce normal quality checks, unless demo mode is on for item_type
+        const bypassQualityCheck = isDemoMode() && field.key === 'item_type';
+        if (!bypassQualityCheck) {
+          const isValidQuality = await validateAudioQuality(blob);
+          if (!isValidQuality) {
+            setState('unclear');
+            speakText(
+              speakingLanguage === 'en'
+                ? "The recording was too short or quiet, please say it clearly."
+                : 'आवाज़ बहुत छोटी या धीमी थी, कृपया फिर से बोलें।',
+              speakingLanguage
+            );
+            return;
+          }
         }
 
         const result = await transcribeForField(blob, field, speakingLanguage);
@@ -202,9 +214,12 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     },
     [field, speakingLanguage, accumulatedDimensions]
   );
+  processAudioRef.current = processAudioForField;
 
   const handleStartListening = async () => {
     if (disabled) return;
+    isProcessingRef.current = false;
+    isStoppingRef.current = false;
     clearError();
     setErrorMessage(null);
     setState('listening');
@@ -330,12 +345,11 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
             data-testid="voice-stop-button"
             onClick={async () => {
               handleManualStop();
-              // Process recorded audio through client service
-              // In hook, audioBlob is provided
               setTimeout(async () => {
-                const blobToProcess = recordedBlob || new Blob(['sample-pcm-data'], { type: 'audio/wav' });
-                await processAudioForField(blobToProcess);
-              }, 50);
+                if (!isProcessingRef.current) {
+                  await processAudioForField(new Blob(['sample-pcm-data'], { type: 'audio/wav' }));
+                }
+              }, 120);
             }}
             className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white flex items-center justify-center shadow transition-all ml-1"
             title={speakingLanguage === 'mr' ? 'Finish speaking / बोलणे पूर्ण करा' : 'Finish speaking / बोलना समाप्त करें'}

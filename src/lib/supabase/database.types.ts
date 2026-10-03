@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -329,6 +329,92 @@ export type Database = {
           },
         ]
       }
+      pricing_training_data: {
+        Row: {
+          area_cm2: number | null
+          category: string | null
+          complexity: string | null
+          cost_finishing: number | null
+          cost_hardware: number | null
+          cost_labour: number | null
+          cost_material: number | null
+          created_at: string
+          finish: string | null
+          id: string
+          item_type: string | null
+          location_text: string | null
+          material: string | null
+          price_final: number
+          product_id: string | null
+          production_cost: number | null
+          shape_profile: string | null
+          source: string
+          source_title: string | null
+          source_url: string | null
+          target_margin: number | null
+          technique: string | null
+          volume_cm3: number | null
+        }
+        Insert: {
+          area_cm2?: number | null
+          category?: string | null
+          complexity?: string | null
+          cost_finishing?: number | null
+          cost_hardware?: number | null
+          cost_labour?: number | null
+          cost_material?: number | null
+          created_at?: string
+          finish?: string | null
+          id?: string
+          item_type?: string | null
+          location_text?: string | null
+          material?: string | null
+          price_final: number
+          product_id?: string | null
+          production_cost?: number | null
+          shape_profile?: string | null
+          source: string
+          source_title?: string | null
+          source_url?: string | null
+          target_margin?: number | null
+          technique?: string | null
+          volume_cm3?: number | null
+        }
+        Update: {
+          area_cm2?: number | null
+          category?: string | null
+          complexity?: string | null
+          cost_finishing?: number | null
+          cost_hardware?: number | null
+          cost_labour?: number | null
+          cost_material?: number | null
+          created_at?: string
+          finish?: string | null
+          id?: string
+          item_type?: string | null
+          location_text?: string | null
+          material?: string | null
+          price_final?: number
+          product_id?: string | null
+          production_cost?: number | null
+          shape_profile?: string | null
+          source?: string
+          source_title?: string | null
+          source_url?: string | null
+          target_margin?: number | null
+          technique?: string | null
+          volume_cm3?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_training_data_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_images: {
         Row: {
           artisan_id: string
@@ -401,6 +487,10 @@ export type Database = {
           category: string | null
           colors: string[] | null
           complexity: string | null
+          cost_finishing: number | null
+          cost_hardware: number | null
+          cost_labour: number | null
+          cost_material: number | null
           created_at: string | null
           description_en: string | null
           description_hi: string | null
@@ -434,6 +524,7 @@ export type Database = {
           price_final: number | null
           price_suggested_ml: number | null
           pricing_confidence: number | null
+          production_cost: number | null
           quantity_available: number | null
           search_tags: string[] | null
           secondary_materials: string[] | null
@@ -445,6 +536,7 @@ export type Database = {
           style: string | null
           suggested_use: string[] | null
           summary_spoken: string | null
+          target_margin: number | null
           technique: string | null
           title_en: string | null
           title_hi: string | null
@@ -463,6 +555,10 @@ export type Database = {
           category?: string | null
           colors?: string[] | null
           complexity?: string | null
+          cost_finishing?: number | null
+          cost_hardware?: number | null
+          cost_labour?: number | null
+          cost_material?: number | null
           created_at?: string | null
           description_en?: string | null
           description_hi?: string | null
@@ -496,6 +592,7 @@ export type Database = {
           price_final?: number | null
           price_suggested_ml?: number | null
           pricing_confidence?: number | null
+          production_cost?: number | null
           quantity_available?: number | null
           search_tags?: string[] | null
           secondary_materials?: string[] | null
@@ -507,6 +604,7 @@ export type Database = {
           style?: string | null
           suggested_use?: string[] | null
           summary_spoken?: string | null
+          target_margin?: number | null
           technique?: string | null
           title_en?: string | null
           title_hi?: string | null
@@ -525,6 +623,10 @@ export type Database = {
           category?: string | null
           colors?: string[] | null
           complexity?: string | null
+          cost_finishing?: number | null
+          cost_hardware?: number | null
+          cost_labour?: number | null
+          cost_material?: number | null
           created_at?: string | null
           description_en?: string | null
           description_hi?: string | null
@@ -558,6 +660,7 @@ export type Database = {
           price_final?: number | null
           price_suggested_ml?: number | null
           pricing_confidence?: number | null
+          production_cost?: number | null
           quantity_available?: number | null
           search_tags?: string[] | null
           secondary_materials?: string[] | null
@@ -569,6 +672,7 @@ export type Database = {
           style?: string | null
           suggested_use?: string[] | null
           summary_spoken?: string | null
+          target_margin?: number | null
           technique?: string | null
           title_en?: string | null
           title_hi?: string | null
