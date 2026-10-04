@@ -41,13 +41,18 @@ export default defineConfig(({ mode, command }) => {
     process.exit(1);
   }
 
+  const isVercel = Boolean(process.env.VERCEL) || Boolean(env.VERCEL);
+  const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+  const defaultBase = isGitHubActions && !isVercel ? '/KARAGIR-APP-/' : '/';
+  const base = process.env.VITE_BASE || env.VITE_BASE || defaultBase;
+
   return {
     plugins: [
       react(),
       tailwindcss(),
       ...(isPhone ? [basicSsl(), phoneBannerPlugin()] : []),
     ],
-    base: '/KARAGIR-APP-/',
+    base,
     server: isPhone
       ? {
           host: true,
