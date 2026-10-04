@@ -1,0 +1,7 @@
+steps:
+  - echo: Open Explore and find verified local artisans
+  - launch: com.karagir.app
+  - tap:
+      text: Explore
+  - await:
+      idle: true

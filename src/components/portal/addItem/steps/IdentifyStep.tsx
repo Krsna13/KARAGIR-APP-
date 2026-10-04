@@ -23,7 +23,7 @@ import {
 import { VoiceOrTypeInput } from '../../../voice/VoiceOrTypeInput';
 import { speakText } from '../../../../config/languages';
 import { saveDraft, debouncedSaveDraft } from '../../../../services/draftService';
-import { assertValidProductPatch } from '../__tests__/patchValidator';
+import { assertValidProductPatch } from '../../../../lib/patchValidator';
 import { listProductImages } from '../../../../services/productImageService';
 import { identifyProductPhotos } from '../../../../services/productIdentificationService';
 import { getProductImageDisplayUrl } from '../../../../services/imageEnhancementService';

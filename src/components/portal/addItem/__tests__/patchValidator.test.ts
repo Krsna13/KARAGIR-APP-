@@ -2,7 +2,7 @@
 // Stage 6.6b Fix A: Compile-time and runtime validation for saveDraft ProductDraftPatch.
 
 import { describe, it, expect } from 'vitest';
-import { assertValidProductPatch } from './patchValidator';
+import { assertValidProductPatch } from '../../../../lib/patchValidator';
 import type { ProductDraftPatch } from '../steps/PreviewStep';
 
 describe('Fix A: ProductDraftPatch typing and patch validator', () => {

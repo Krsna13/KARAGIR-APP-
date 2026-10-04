@@ -294,7 +294,6 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   };
 
   // Hook up audioBlob completion
-  const { audioBlob: recordedBlob } = useAudioRecorder({ maxDurationSeconds });
 
   return (
     <div className={`relative inline-flex items-center ${className}`}>

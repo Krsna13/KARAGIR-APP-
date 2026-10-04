@@ -11,7 +11,7 @@ import { VoiceOrTypeInput } from '../../../voice/VoiceOrTypeInput';
 import { speakText } from '../../../../config/languages';
 import { saveDraft, debouncedSaveDraft } from '../../../../services/draftService';
 import { fetchOnlineEstimate, recordConfirmedPrice, type OnlineEstimate } from '../../../../services/priceEstimateService';
-import { assertValidProductPatch } from '../__tests__/patchValidator';
+import { assertValidProductPatch } from '../../../../lib/patchValidator';
 import { asDescribeLang } from './describeLogic';
 import {
   MARGIN_PRESETS,

@@ -29,7 +29,7 @@ import {
   isListingPresent,
 } from '../steps/listingLogic';
 import type { ProductRecord } from '../../../../types/product';
-import { assertValidProductPatch } from './patchValidator';
+import { assertValidProductPatch } from '../../../../lib/patchValidator';
 
 const sampleFacts: ProductFactsInput = {
   item_type: 'Diya',

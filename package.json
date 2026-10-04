@@ -6,11 +6,15 @@
   "scripts": {
     "dev": "vite",
     "dev:phone": "vite --mode phone --host",
+    "dev:demo": "vite --mode demo",
+    "dev:phone:demo": "vite --mode demo-phone --host",
     "build": "tsc -b && vite build",
+    "build:demo": "tsc -b && vite build --mode demo",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
     "build:android": "node scripts/build-android.js",
+    "build:android:demo": "node scripts/build-android.js --demo",
     "seed:market-data": "node scripts/seedMarketListings.ts"
   },
   "dependencies": {
@@ -45,6 +49,7 @@
     "canvas": "^3.2.3",
     "jsdom": "^29.1.1",
     "oxlint": "^1.75.0",
+    "playwright": "^1.63.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
     "vitest": "^4.1.10"

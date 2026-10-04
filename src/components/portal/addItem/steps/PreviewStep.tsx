@@ -50,7 +50,7 @@ import {
   findPriceMention,
 } from '../../../../../supabase/functions/generate-listing/validation';
 import { saveDraft } from '../../../../services/draftService';
-import { assertValidProductPatch } from '../../../../components/portal/addItem/__tests__/patchValidator';
+import { assertValidProductPatch } from '../../../../lib/patchValidator';
 import type { Database } from '../../../../lib/supabase/database.types';
 
 type ProductUpdate = Database['public']['Tables']['products']['Update'];

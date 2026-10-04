@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase/client';
 import type { ProductIdentification, IdentifiedProductCategory } from '../types';
 import type { ProductAiIdentification, ProductImage } from '../types/product';
 import { validateGeminiResult } from '../../supabase/functions/identify-product/validation';
+import { isDemoMode } from '../config/demoMode';
+import { bedDemoScript } from '../demo/bedDemoScript';
 
 export class ProductIdentificationError extends Error {
   readonly status?: number;
@@ -258,6 +260,10 @@ export async function identifyProductPhotos(
   images: ProductImage[],
   speakingLanguage?: string | null
 ): Promise<PhotoIdentificationResult> {
+  if (isDemoMode()) {
+    return bedDemoScript.identifyProductPhotos;
+  }
+
   const selection = selectIdentificationImages(images);
   if (selection.urls.length === 0) {
     throw new ProductIdentificationError('No saved photos to identify.');

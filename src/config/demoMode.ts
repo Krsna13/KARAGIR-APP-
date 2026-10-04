@@ -15,7 +15,8 @@ export function isDemoMode(): boolean {
   let envVal: string | boolean | undefined;
 
   try {
-    envVal = (import.meta as { env?: Record<string, string | boolean> })?.env?.VITE_DEMO_MODE;
+    // Must be written as a plain `import.meta.env.X`: Vite's dev server only injects the env for that exact form.
+    envVal = import.meta.env.VITE_DEMO_MODE as string | boolean | undefined;
   } catch {
     // import.meta may be undefined in certain test runners
   }

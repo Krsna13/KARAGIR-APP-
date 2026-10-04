@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Hammer, MapPin, ChevronDown, ShieldCheck } from 'lucide-react';
 import type { AppMode, LocationPin } from '../../types';
 import { useKaragirStore } from '../../context/KaragirStoreContext';
+import { isDemoMode } from '../../config/demoMode';
 
 
 interface MobileHeaderProps {
@@ -63,6 +64,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
             <span className="w-2 h-2 rounded-full bg-[#EA580C] glow-dot ml-0.5 inline-block"></span>
           </div>
         </button>
+
+        {isDemoMode() && (
+          <div className="flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30 ml-1">
+            Demo
+          </div>
+        )}
       </div>
 
       {/* Center Location Pill */}

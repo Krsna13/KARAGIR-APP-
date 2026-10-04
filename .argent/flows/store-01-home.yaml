@@ -1,0 +1,5 @@
+steps:
+  - echo: Launch Karagir home feed
+  - launch: com.karagir.app
+  - await:
+      idle: true

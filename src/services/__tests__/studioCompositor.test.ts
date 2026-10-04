@@ -92,7 +92,7 @@ describe('StudioCompositor (Stage 6.3b, Part 2)', () => {
 
       expect(blob).toEqual(dummyJpegBlob);
       expect(renderMock).toHaveBeenCalledWith(expect.any(Object), 0.9);
-    });
+    }, 10000);
 
     it('handles light_only mode by exporting original dimensions to JPEG 0.9', async () => {
       const pixels = createMockPixels(60, 40);

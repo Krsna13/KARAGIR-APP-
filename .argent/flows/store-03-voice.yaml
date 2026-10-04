@@ -1,0 +1,5 @@
+steps:
+  - echo: Open Voice-Driven Valuation
+  - launch: com.karagir.app
+  - await:
+      idle: true

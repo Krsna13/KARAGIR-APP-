@@ -512,7 +512,6 @@ describe('VoiceInputButton Component (Stage 6.2)', () => {
       delete (globalThis as any).AudioContext;
       delete (window as any).AudioContext;
       vi.unstubAllEnvs();
-      delete process.env.VITE_DEMO_MODE;
       vi.restoreAllMocks();
     });
 

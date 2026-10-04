@@ -34,4 +34,8 @@ temp/
 layout_refactor.py
 safe_refactor.py
 graphify-out/
+goldie/out/
+.agents/
+skills-lock.json
+smoke-test.mjs
 

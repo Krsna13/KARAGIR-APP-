@@ -3,6 +3,7 @@ import { Hammer, MapPin, ChevronDown, ShieldCheck, Layers, Compass, Hammer as Ha
 import { useKaragirStore } from '../context/KaragirStoreContext';
 import type { AppMode, LocationPin } from '../types';
 import { NASHIK_LOCALITIES } from '../data/mockData';
+import { isDemoMode } from '../config/demoMode';
 
 interface NavbarProps {
   mode: AppMode;
@@ -93,6 +94,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </p>
               </div>
             </button>
+
+            {isDemoMode() && (
+              <div className="hidden sm:flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                Demo / डेमो
+              </div>
+            )}
 
             {/* Location Picker Pill */}
             <div className="relative hidden md:block" ref={dropdownRef}>

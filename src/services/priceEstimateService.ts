@@ -8,6 +8,8 @@
  */
 
 import { supabase } from '../lib/supabase/client';
+import { isDemoMode } from '../config/demoMode';
+import { bedDemoScript } from '../demo/bedDemoScript';
 
 export interface OnlineListingResult {
   title: string;
@@ -29,6 +31,10 @@ export type OnlineEstimate =
 const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0;
 
 export async function fetchOnlineEstimate(productId: string): Promise<OnlineEstimate> {
+  if (isDemoMode()) {
+    return bedDemoScript.estimatePrice;
+  }
+
   try {
     const { data, error } = await supabase.functions.invoke('estimate-price', { body: { product_id: productId } });
     if (error || !data) return { status: 'unavailable' };

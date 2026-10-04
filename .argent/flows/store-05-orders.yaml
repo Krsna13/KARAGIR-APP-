@@ -1,0 +1,7 @@
+steps:
+  - echo: Open Milestone Orders Tracker
+  - launch: com.karagir.app
+  - tap:
+      text: Orders
+  - await:
+      idle: true

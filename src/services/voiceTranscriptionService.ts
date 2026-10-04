@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase/client';
 import type { VoiceFieldSpec, VoiceTranscriptionResult } from '../types/voice';
 import { convertAudioBlobTo16kHzWav } from '../utils/audioConverter';
 import { isDemoMode } from '../config/demoMode';
+import { bedDemoScript } from '../demo/bedDemoScript';
 
 export class VoiceTranscriptionError extends Error {
   readonly status?: number;
@@ -50,21 +51,37 @@ export async function transcribeForField(
   field: VoiceFieldSpec,
   speakingLanguage: string = 'hi'
 ): Promise<VoiceTranscriptionResult> {
-  // Demo mode override: when VITE_DEMO_MODE is on, return Bed script for item_type
-  if (isDemoMode() && field.key === 'item_type') {
-    const original = speakingLanguage === 'mr' ? 'बेड' : 'पलंग';
-    const spoken = speakingLanguage === 'en' ? 'Bed' : (speakingLanguage === 'mr' ? 'बेड' : 'पलंग');
+  // Demo mode override: when VITE_DEMO_MODE is on, return Bed script for all fields
+  if (isDemoMode()) {
+    if (field.key === 'item_type') {
+      const original = speakingLanguage === 'mr' ? 'बेड' : 'पलंग';
+      const spoken = speakingLanguage === 'en' ? 'Bed' : (speakingLanguage === 'mr' ? 'बेड' : 'पलंग');
+      return {
+        status: 'ok',
+        value: {
+          original,
+          en: 'Bed',
+        },
+        value_display_en: 'Bed',
+        value_display_hi: 'पलंग / बेड',
+        value_display_spoken: spoken,
+        confidence: 1.0,
+        transcript_original: original,
+      };
+    }
+    
+    const answer = bedDemoScript.voiceAnswers[field.key] || `Mock answer for ${field.key}`;
     return {
       status: 'ok',
       value: {
-        original,
-        en: 'Bed',
+        original: answer,
+        en: answer,
       },
-      value_display_en: 'Bed',
-      value_display_hi: 'पलंग / बेड',
-      value_display_spoken: spoken,
+      value_display_en: answer,
+      value_display_hi: answer,
+      value_display_spoken: answer,
       confidence: 1.0,
-      transcript_original: original,
+      transcript_original: answer,
     };
   }
 
@@ -180,21 +197,37 @@ export async function transcribeTextForField(
 ): Promise<VoiceTranscriptionResult> {
   const cleanText = text?.trim();
 
-  // Demo mode override: when VITE_DEMO_MODE is on, return Bed script for item_type
-  if (isDemoMode() && field.key === 'item_type') {
-    const original = cleanText || (speakingLanguage === 'mr' ? 'बेड' : 'पलंग');
-    const spoken = speakingLanguage === 'en' ? 'Bed' : (speakingLanguage === 'mr' ? 'बेड' : 'पलंग');
+  // Demo mode override: when VITE_DEMO_MODE is on, return Bed script
+  if (isDemoMode()) {
+    if (field.key === 'item_type') {
+      const original = cleanText || (speakingLanguage === 'mr' ? 'बेड' : 'पलंग');
+      const spoken = speakingLanguage === 'en' ? 'Bed' : (speakingLanguage === 'mr' ? 'बेड' : 'पलंग');
+      return {
+        status: 'ok',
+        value: {
+          original,
+          en: cleanText && cleanText.toLowerCase() !== 'bed' ? cleanText : 'Bed',
+        },
+        value_display_en: 'Bed',
+        value_display_hi: 'पलंग / बेड',
+        value_display_spoken: spoken,
+        confidence: 1.0,
+        transcript_original: original,
+      };
+    }
+
+    const answer = bedDemoScript.voiceAnswers[field.key] || cleanText || `Mock answer for ${field.key}`;
     return {
       status: 'ok',
       value: {
-        original,
-        en: cleanText && cleanText.toLowerCase() !== 'bed' ? cleanText : 'Bed',
+        original: answer,
+        en: answer,
       },
-      value_display_en: 'Bed',
-      value_display_hi: 'पलंग / बेड',
-      value_display_spoken: spoken,
+      value_display_en: answer,
+      value_display_hi: answer,
+      value_display_spoken: answer,
       confidence: 1.0,
-      transcript_original: original,
+      transcript_original: answer,
     };
   }
 

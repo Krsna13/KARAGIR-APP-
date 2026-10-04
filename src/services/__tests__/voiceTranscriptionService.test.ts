@@ -24,12 +24,10 @@ describe('voiceTranscriptionService demo mode gating', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    delete process.env.VITE_DEMO_MODE;
     vi.unstubAllEnvs();
   });
 
   afterEach(() => {
-    delete process.env.VITE_DEMO_MODE;
     vi.unstubAllEnvs();
   });
 

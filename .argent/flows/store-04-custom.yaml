@@ -1,0 +1,7 @@
+steps:
+  - echo: Open Craft AI Custom Request Builder
+  - launch: com.karagir.app
+  - tap:
+      text: Craft AI
+  - await:
+      idle: true

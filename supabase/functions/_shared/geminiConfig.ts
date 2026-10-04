@@ -10,5 +10,5 @@
  *    (Hindi, Marathi, Indian English) and Indian vernacular number idioms ("dhai", "dedh sau", etc.).
  * 4. Cost Efficiency: Optimized token pricing for real-time mobile artisan interactions.
  */
-export const GEMINI_MODEL = 'gemini-3.8-flash';
+export const GEMINI_MODEL = 'gemini-2.5-flash';
 export const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';

@@ -5,7 +5,7 @@
  * in the generated Supabase products Update type.
  */
 
-import type { Database } from '../../../../lib/supabase/database.types';
+import type { Database } from './supabase/database.types';
 
 export type ProductUpdate = Database['public']['Tables']['products']['Update'];
 export type ProductUpdateKey = keyof ProductUpdate; 

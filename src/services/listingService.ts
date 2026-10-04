@@ -9,6 +9,8 @@ import { saveDraft } from './draftService';
 import type { ListingResult, ListingSection, ProductRecord } from '../types/product';
 import type { ArtisanListingProfile, ProductFactsInput } from '../../supabase/functions/generate-listing/validation';
 import { computeFactsHash } from '../components/portal/addItem/steps/listingLogic';
+import { isDemoMode } from '../config/demoMode';
+import { bedDemoScript } from '../demo/bedDemoScript';
 
 export interface GenerateListingOptions {
   facts: ProductFactsInput;
@@ -35,6 +37,13 @@ export interface ListingServiceResult {
 export async function invokeGenerateListing(
   options: GenerateListingOptions
 ): Promise<ListingServiceResult> {
+  if (isDemoMode()) {
+    return {
+      success: true,
+      listing: bedDemoScript.generateListing
+    };
+  }
+
   try {
     const { data, error } = await supabase.functions.invoke('generate-listing', {
       body: {

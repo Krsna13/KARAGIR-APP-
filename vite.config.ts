@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, type Plugin, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
@@ -28,8 +28,18 @@ function phoneBannerPlugin(): Plugin {
 }
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
-  const isPhone = mode === 'phone' || process.env.VITE_DEV_PHONE === 'true';
+export default defineConfig(({ mode, command }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const isDemo = env.VITE_DEMO_MODE === 'true';
+  const isPhone = mode === 'phone' || mode === 'demo-phone' || process.env.VITE_DEV_PHONE === 'true';
+
+  if (command === 'build' && isDemo && mode !== 'demo') {
+    console.error('\n❌ ERROR: Production build failed!');
+    console.error('❌ VITE_DEMO_MODE is set to true in your environment.');
+    console.error('❌ You must not deploy demo mode to production.');
+    console.error('❌ If you intentionally want a demo build, run: npm run build:demo\n');
+    process.exit(1);
+  }
 
   return {
     plugins: [

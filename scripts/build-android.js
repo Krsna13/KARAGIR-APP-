@@ -8,6 +8,7 @@
  * Usage:
  *   node scripts/build-android.js
  *   node scripts/build-android.js --enable-dev-tools
+ *   node scripts/build-android.js --demo   (mock "Bed" voice/AI script; never ship)
  *   VITE_ENABLE_DEV_TOOLS=true node scripts/build-android.js
  *
  * Behavior:
@@ -20,12 +21,14 @@ import { spawnSync } from 'child_process';
 
 const args = process.argv.slice(2);
 const enableDevToolsArg = args.includes('--enable-dev-tools') || args.some((arg) => arg.startsWith('--dev-tools'));
+const isDemoBuild = args.includes('--demo');
 const envFlag = process.env.VITE_ENABLE_DEV_TOOLS;
 
 // True if explicitly set via --enable-dev-tools or VITE_ENABLE_DEV_TOOLS=true/1
 const isDevToolsEnabled = enableDevToolsArg || envFlag === 'true' || envFlag === '1';
 
 console.log('----------------------------------------------------');
+console.log(`[build:android] Mode = ${isDemoBuild ? 'DEMO (mock Bed script, fake AI)' : 'normal (real AI)'}`);
 console.log(`[build:android] Target: Android (Capacitor)`);
 console.log(`[build:android] VITE_ENABLE_DEV_TOOLS = ${isDevToolsEnabled ? 'true (TESTING BUILD)' : 'false (PRODUCTION BUILD)'}`);
 console.log('----------------------------------------------------');
@@ -38,7 +41,7 @@ const buildEnv = {
 // 1. Build Web Assets
 console.log('[build:android] Step 1/2: Compiling TypeScript & building web bundle...');
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const buildResult = spawnSync(`${npmCmd} run build`, {
+const buildResult = spawnSync(`${npmCmd} run ${isDemoBuild ? 'build:demo' : 'build'}`, {
   stdio: 'inherit',
   env: buildEnv,
   shell: true,
